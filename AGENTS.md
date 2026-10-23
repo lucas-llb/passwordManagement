@@ -31,25 +31,32 @@ Princípios, em ordem de prioridade:
 
 Sync/nuvem, conta online, extensão de navegador, compartilhamento entre usuários, analytics, crash reporting remoto, anúncios. Autofill do Android e Windows Hello são candidatos para uma fase futura.
 
-## 2. Estrutura do repositório (alvo)
+## 2. Estrutura do repositório
 
 ```
-/AGENTS.md
+/AGENTS.md                       # este guia (CLAUDE.md só importa este arquivo)
 /docs/
-  vault-format.md          # especificação do formato do cofre (fonte da verdade)
-  threat-model.md          # o que protegemos e de quem
-/spec/test-vectors/        # vetores de teste de cripto/formato usados pelas DUAS plataformas
+  vault-format.md                # especificação do formato do cofre (fonte da verdade)
+  threat-model.md                # o que protegemos e de quem
+/spec/test-vectors/              # vetores de teste usados pelas DUAS plataformas (só dados fictícios)
 /windows/
   PasswordManager.slnx
+  global.json                    # fixa o SDK .NET 10 e o runner Microsoft.Testing.Platform
+  Directory.Build.props          # Nullable, warnings como erro, analisadores, lockfiles
+  Directory.Packages.props       # versões NuGet centralizadas (CPM)
   src/PasswordManager.Core/      # cripto, cofre, modelos — sem dependência de UI
-  src/PasswordManager.App/       # WinUI 3 (MVVM com CommunityToolkit.Mvvm)
-  tests/PasswordManager.Core.Tests/
+  src/PasswordManager.App/       # WinUI 3 (MVVM com CommunityToolkit.Mvvm), textos em Strings/pt-BR/Resources.resw
+  tests/PasswordManager.Core.Tests/   # xUnit v3
 /android/
   settings.gradle.kts
-  gradle/libs.versions.toml      # version catalog
-  core/                          # módulo Kotlin: cripto, cofre, modelos — sem Android UI
+  gradle/libs.versions.toml      # version catalog (todas as versões ficam aqui)
+  core/                          # biblioteca Android: cripto, cofre, modelos — sem UI
   app/                           # Compose UI, ViewModels, biometria
 ```
+
+- Pacotes: Windows `PasswordManager.*`; Android `com.passwordmanagement.core` e `com.passwordmanagement.android` (também o `applicationId`).
+- O AGP 9 tem Kotlin embutido: **não** aplicar o plugin `org.jetbrains.kotlin.android` nos módulos. Ele só fica declarado no `build.gradle.kts` raiz (`apply false`) para fixar a versão do Kotlin.
+- `lazysodium-android` e `jna` entram como `aar`. A versão do `jna` acompanha a usada pelo lazysodium.
 
 Regra: **toda a lógica de cripto e de formato do cofre fica no módulo `Core`/`core`**, isolada e testável sem UI. A UI só chama `unlock`, `lock`, `save`, `export` etc.
 
@@ -145,7 +152,7 @@ senha mestra ──Argon2id(salt)──► KEK (256 bits)
 
 - .NET 10, WinUI 3 com a versão estável mais recente do Windows App SDK, MVVM com `CommunityToolkit.Mvvm`.
 - `<Nullable>enable</Nullable>`, `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`, analisadores .NET ligados (`<AnalysisLevel>latest-recommended</AnalysisLevel>`).
-- Empacotar como **MSIX** sem a capability `internetClient`; publicar self-contained com trimming quando compatível.
+- Empacotar como **MSIX** sem a capability `internetClient`; publicar self-contained com trimming quando compatível. Por enquanto o app roda sem pacote (`WindowsPackageType=None`) porque ainda não há ícones; migrar para MSIX antes da primeira release.
 - Cofre em `%LOCALAPPDATA%\<App>\vaults\` (ou `ApplicationData.Current.LocalFolder` quando empacotado).
 - Nenhum pacote NuGet de rede/telemetria (HttpClient, Application Insights, Sentry etc.).
 - Exportar/importar via `FileSavePicker`/`FileOpenPicker`.
@@ -180,8 +187,8 @@ Nunca gravar exportações em pasta temporária ou cache; sempre no local escolh
 - `Core` das duas plataformas com testes unitários: derivação de chave, wrap/unwrap, cifrar/decifrar, senha errada falha, arquivo adulterado falha (cabeçalho e corpo), troca de senha mestra, export/import.
 - **Vetores compartilhados** em `spec/test-vectors/`: um cofre gerado no Windows tem que abrir no Android e vice-versa.
 - Comandos:
-  - Windows: `dotnet test windows/PasswordManager.slnx`
-  - Android: `./gradlew :core:test :app:testDebugUnitTest` (em `android/`), e `./gradlew lint`.
+  - Windows: `dotnet test --solution windows/PasswordManager.slnx`
+  - Android: `./gradlew :core:testDebugUnitTest :app:testDebugUnitTest` (em `android/`), e `./gradlew lint`.
 - Mudança em cripto ou formato **não** é considerada pronta sem esses testes passando nas duas plataformas.
 
 ## 9. Regras para agentes
