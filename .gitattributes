@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+# Windows-only scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaries
+*.jar binary
+*.png binary
+*.ico binary
+*.pmvault binary

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gerenciador de Senhas</string>
+    <string name="profiles_empty_title">Nenhum perfil ainda</string>
+    <string name="profiles_empty_hint">Crie um perfil com uma senha mestra para começar.</string>
+</resources>
