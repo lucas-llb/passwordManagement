@@ -18,10 +18,17 @@ android {
     }
 }
 
+// The host JVM cannot load the Android .so, so unit tests use lazysodium-java instead.
+configurations.configureEach {
+    if (name.endsWith("UnitTestRuntimeClasspath")) exclude(group = "com.goterl", module = "lazysodium-android")
+}
+
 dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.lazysodium.android) { artifact { type = "aar" } }
     implementation(libs.jna) { artifact { type = "aar" } }
 
     testImplementation(libs.junit)
+    // Desktop libsodium for host-JVM unit tests; test scope only, never reaches the APK.
+    testImplementation(libs.lazysodium.java)
 }

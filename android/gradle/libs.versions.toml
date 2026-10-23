@@ -30,6 +30,7 @@ jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 lazysodium-android = { module = "com.goterl:lazysodium-android", version.ref = "lazysodium" }
+lazysodium-java = { module = "com.goterl:lazysodium-java", version.ref = "lazysodium" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
