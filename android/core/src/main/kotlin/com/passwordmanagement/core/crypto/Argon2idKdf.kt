@@ -1,7 +1,5 @@
 package com.passwordmanagement.core.crypto
 
-import com.goterl.lazysodium.LazySodiumAndroid
-import com.goterl.lazysodium.SodiumAndroid
 import com.goterl.lazysodium.interfaces.PwHash
 import com.passwordmanagement.core.vault.KdfParameters
 import com.passwordmanagement.core.vault.VaultFormat
@@ -25,7 +23,7 @@ import java.text.Normalizer
  */
 class Argon2idKdf internal constructor(private val pwHash: PwHash.Native) {
     /** Uses the device libsodium, loaded once on first use. */
-    constructor() : this(AndroidSodium.pwHash)
+    constructor() : this(AndroidSodium.lazySodium)
 
     /**
      * Derives the KEK from a master password. The Argon2id input is `UTF-8(NFC(password))`,
@@ -114,9 +112,4 @@ class Argon2idKdf internal constructor(private val pwHash: PwHash.Native) {
             throw IllegalStateException("Argon2id key derivation failed.")
         }
     }
-}
-
-/** Holds the device libsodium so it is loaded once, and only when the public constructor is used. */
-private object AndroidSodium {
-    val pwHash: PwHash.Native by lazy { LazySodiumAndroid(SodiumAndroid()) }
 }
