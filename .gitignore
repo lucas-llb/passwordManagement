@@ -54,6 +54,8 @@ captures/
 *.pmvault
 *.bak
 *.pmvault.tmp
+profiles.json
+profiles.json.tmp
 keystore.properties
 *.csv
 # ...except the fictitious samples used by both platforms' tests
