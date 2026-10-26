@@ -53,6 +53,7 @@ captures/
 *.p12
 *.pmvault
 *.bak
+*.pmvault.tmp
 keystore.properties
 *.csv
 # ...except the fictitious samples used by both platforms' tests

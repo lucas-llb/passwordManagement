@@ -10,6 +10,7 @@
 | `profiles.json` | lista de perfis: `id` (UUID), `displayName`, `createdAt` | não |
 | `<id>.pmvault` | cofre do perfil (formato abaixo) | sim |
 | `<id>.pmvault.bak` | versão anterior do cofre | sim |
+| `<id>.pmvault.tmp` | temporário da gravação atômica; só sobra após uma queda e é sobrescrito na próxima gravação | sim |
 | `<id>.biometric` | (só Android) Vault Key envolvida pela chave do Keystore. **Fora do formato portátil**: formato privado do app, nunca exportado e excluído do backup (ver "Desbloqueio vinculado ao dispositivo") | sim |
 
 ## Layout binário de `<id>.pmvault`
@@ -99,6 +100,13 @@ Desbloqueio: a senha tenta só o slot tipo 1; o kit tenta só o slot tipo 2. Nun
   - Gerar de novo substitui o slot tipo 2, e o kit antigo deixa de funcionar.
   - Remover o kit tira o slot, deixando `slotCount = 1`.
 - Arquivos `.pmvault` exportados usam o mesmo layout, uma Vault Key nova, exatamente um slot tipo 1 (a senha de exportação) e nenhum slot tipo 2.
+- Gravação atômica (igual nas duas plataformas; `tmp` e `bak` ficam na mesma pasta do `<id>.pmvault`, então a renomeação nunca cruza volumes):
+  1. Validar os bytes completos como na leitura. Bytes inválidos falham antes de tocar o disco.
+  2. Criar ou truncar `<id>.pmvault.tmp` (um temporário antigo, de uma queda, é sobrescrito), gravar os bytes e forçar a escrita no disco (flush/fsync).
+  3. Se `<id>.pmvault` existe, copiá-lo por cima de `<id>.pmvault.bak`. Na primeira gravação não se cria `.bak`.
+  4. Renomear `<id>.pmvault.tmp` por cima de `<id>.pmvault`, de forma atômica.
+  5. Ao final, com ou sem erro, apagar `<id>.pmvault.tmp` se ainda existir (melhor esforço). A gravação nunca cria pastas.
+  - Resultado: o `<id>.pmvault` nunca deixa de existir; em falha, ele fica como estava.
 
 ## Kit de Recuperação
 
