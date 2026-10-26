@@ -1,3 +1,5 @@
+using PasswordManager.Core.Storage;
+
 namespace PasswordManager.Core.Vault;
 
 /// <summary>
@@ -53,42 +55,6 @@ public static class VaultFile
         var fullPath = Path.GetFullPath(path);
         VaultHeader.Parse(contents);
 
-        var tempPath = fullPath + TempSuffix;
-        var backupPath = fullPath + BackupSuffix;
-        try
-        {
-            using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                stream.Write(contents);
-                stream.Flush(flushToDisk: true);
-            }
-
-            if (File.Exists(fullPath))
-            {
-                File.Copy(fullPath, backupPath, overwrite: true);
-            }
-
-            File.Move(tempPath, fullPath, overwrite: true);
-        }
-        finally
-        {
-            DeleteQuietly(tempPath);
-        }
-    }
-
-    private static void DeleteQuietly(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (IOException)
-        {
-            // Best effort: a leftover temp is overwritten by the next write.
-        }
-        catch (UnauthorizedAccessException)
-        {
-            // Best effort, as above.
-        }
+        AtomicFile.Write(fullPath, contents, keepBackup: true);
     }
 }

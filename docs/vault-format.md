@@ -7,11 +7,46 @@
 
 | Arquivo | Conteúdo | Cifrado? |
 |---|---|---|
-| `profiles.json` | lista de perfis: `id` (UUID), `displayName`, `createdAt` | não |
+| `profiles.json` | lista de perfis `{"profiles":[…]}`: `id` (UUID), `displayName`, `createdAt`. Local ao dispositivo, nunca exportado, sem `.bak` (ver "profiles.json") | não |
+| `profiles.json.tmp` | temporário da gravação atômica da lista; só sobra após uma queda e é sobrescrito na próxima gravação | não |
 | `<id>.pmvault` | cofre do perfil (formato abaixo) | sim |
 | `<id>.pmvault.bak` | versão anterior do cofre | sim |
 | `<id>.pmvault.tmp` | temporário da gravação atômica; só sobra após uma queda e é sobrescrito na próxima gravação | sim |
 | `<id>.biometric` | (só Android) Vault Key envolvida pela chave do Keystore. **Fora do formato portátil**: formato privado do app, nunca exportado e excluído do backup (ver "Desbloqueio vinculado ao dispositivo") | sim |
+
+## profiles.json
+
+Lista dos perfis do dispositivo, na mesma pasta dos cofres. Fica em claro (ver "Metadados em claro"): só tem o nome de exibição, que a tela de seleção precisa mostrar antes de desbloquear. Não faz parte do formato portátil: nunca é exportada e não entra nos vetores de teste.
+
+- Pasta: `%LOCALAPPDATA%\PasswordManagement\vaults\` no Windows sem pacote, `<LocalFolder>\vaults\` quando empacotado (MSIX). O Android seguirá o mesmo formato em `filesDir`.
+- Formato (UTF-8 sem BOM, JSON compacto, campos em camelCase):
+
+```json
+{
+  "profiles": [
+    {
+      "id": "0b6f7c1e-2f5d-4a6b-9a8e-3c1d2e4f5a6b",
+      "displayName": "Trabalho",
+      "createdAt": "2026-01-01T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+- A ordem do array é a ordem de criação.
+- `id` é UUID minúsculo com hífens, nunca todo zero e sem repetição. Os nomes de arquivo (`<id>.pmvault`, `.bak`, `.tmp`) vêm só do `id`, nunca do `displayName`.
+- `createdAt` é ISO-8601 UTC com milissegundos e sufixo `Z`, como no corpo do cofre.
+- Regras do `displayName`, na ordem em que são conferidas:
+  1. Sem caractere de controle e sem surrogate solto.
+  2. Normalizado em Unicode NFC e sem espaços nas pontas.
+  3. Não vazio.
+  4. No máximo 64 unidades UTF-16.
+  5. Único entre os perfis, sem diferenciar maiúsculas de minúsculas (comparação ordinal).
+- Leitores ignoram campos desconhecidos. Arquivo ausente (ou pasta ausente) significa nenhum perfil. Arquivo corrompido (JSON inválido, elemento nulo, `id` inválido ou repetido, `displayName` vazio, campo obrigatório ausente) é erro e nunca é sobrescrito automaticamente.
+- Gravação atômica como a do cofre (`profiles.json.tmp`, flush, renomear por cima), mas **sem `.bak`**: um `.bak` guardaria os nomes de perfis já apagados.
+- Ordem ao criar: grava o `<id>.pmvault` primeiro e depois a lista; se a lista falhar, o cofre novo é removido (melhor esforço), então todo perfil listado tem cofre em disco.
+- Ordem ao apagar: tira o perfil da lista primeiro e depois remove `<id>.pmvault`, `.bak` e `.tmp`. Se um arquivo não puder ser removido, o erro sobe e repetir a operação limpa o que sobrou. Cofres órfãos (sem entrada na lista) nunca são apagados automaticamente.
+- Sem trava entre processos: quem chama deve serializar as operações.
 
 ## Layout binário de `<id>.pmvault`
 
