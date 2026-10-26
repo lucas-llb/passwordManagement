@@ -386,4 +386,120 @@ public class VaultBodyTests
     {
         Assert.Equal(VaultFormat.MinFileSize, SealRaw([]).Length);
     }
+
+    // --- Reseal ---
+
+    private static byte[] DecryptBody(byte[] file, int bodyOffset)
+    {
+        var plaintext = new byte[file.Length - bodyOffset - 24 - 16];
+        VaultBodyCipher.Decrypt(
+            Vk,
+            file.AsSpan(bodyOffset + 24),
+            file.AsSpan(0, bodyOffset + 24),
+            file.AsSpan(bodyOffset, 24),
+            plaintext);
+        return plaintext;
+    }
+
+    [Fact]
+    public void Reseal_V1OntoF2_ProducesNewHeaderFreshNonceAndSameEntries()
+    {
+        var result = VaultBody.Reseal(V1, B1, F2, Vk);
+
+        Assert.Equal(F2, result[..B2]);
+        Assert.Equal(VaultBody.Open(V1, B1, Vk).Entries, VaultBody.Open(result, B2, Vk).Entries);
+        Assert.NotEqual(Bn, result[B2..(B2 + 24)]);
+        Assert.Equal(B2 + 24 + 350, result.Length);
+    }
+
+    [Fact]
+    public void Reseal_UnknownJsonField_KeepsPlaintextBytes()
+    {
+        var plaintext = Utf8("""{"entries":[],"futureField":1}""");
+        var file = SealRaw(plaintext);
+
+        var result = VaultBody.Reseal(file, B1, F1, Vk);
+
+        Assert.Equal(F1, result[..B1]);
+        Assert.Equal(plaintext, DecryptBody(result, B1));
+    }
+
+    [Fact]
+    public void Reseal_TwiceWithSameInputs_UsesFreshNonceAndCiphertext()
+    {
+        var first = VaultBody.Reseal(V1, B1, F1, Vk);
+        var second = VaultBody.Reseal(V1, B1, F1, Vk);
+
+        Assert.NotEqual(first[B1..(B1 + 24)], second[B1..(B1 + 24)]);
+        Assert.NotEqual(first[(B1 + 24)..], second[(B1 + 24)..]);
+        Assert.Equal(DecryptBody(V1, B1), DecryptBody(first, B1));
+        Assert.Equal(DecryptBody(V1, B1), DecryptBody(second, B1));
+    }
+
+    [Theory]
+    [MemberData(nameof(V0Regions))]
+    public void Reseal_FlippedByteInV0Region_ThrowsVaultAuthenticationException(string region, int start, int end)
+    {
+        Assert.NotNull(region);
+        for (var index = start; index < end; index++)
+        {
+            var file = FlipLowBit(V0, index);
+
+            AssertAuthenticationFailure(() => VaultBody.Reseal(file, B1, F1, Vk));
+        }
+    }
+
+    [Fact]
+    public void Reseal_WrongVaultKey_ThrowsVaultAuthenticationException()
+    {
+        var wrongKey = FlipLowBit(Vk, 0);
+
+        AssertAuthenticationFailure(() => VaultBody.Reseal(V0, B1, F1, wrongKey));
+    }
+
+    [Fact]
+    public void Reseal_BodyOffsetBeforeFirstSlot_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => VaultBody.Reseal(V0, 6, F1, Vk));
+    }
+
+    [Fact]
+    public void Reseal_BodyShorterThanNonceAndTag_ThrowsVaultFormatException()
+    {
+        var file = V0[..147];
+
+        var exception = Assert.Throws<VaultFormatException>(() => VaultBody.Reseal(file, B1, F1, Vk));
+
+        Assert.Equal("Vault body is truncated.", exception.Message);
+    }
+
+    [Fact]
+    public void Reseal_HeaderShorterThanPreambleAndSlotCount_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => VaultBody.Reseal(V0, B1, new byte[6], Vk));
+    }
+
+    [Theory]
+    [InlineData(31)]
+    [InlineData(33)]
+    public void Reseal_WrongVaultKeyLength_ThrowsArgumentException(int length)
+    {
+        var vaultKey = new byte[length];
+
+        Assert.Throws<ArgumentException>(() => VaultBody.Reseal(V0, B1, F1, vaultKey));
+    }
+
+    [Fact]
+    public void Reseal_Inputs_AreNotModified()
+    {
+        var file = (byte[])V1.Clone();
+        var header = (byte[])F2.Clone();
+        var vaultKey = (byte[])Vk.Clone();
+
+        VaultBody.Reseal(file, B1, header, vaultKey);
+
+        Assert.Equal(V1, file);
+        Assert.Equal(F2, header);
+        Assert.Equal(Vk, vaultKey);
+    }
 }

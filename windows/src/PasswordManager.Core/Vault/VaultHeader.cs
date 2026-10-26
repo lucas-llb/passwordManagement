@@ -134,6 +134,46 @@ public sealed class VaultHeader
         return header;
     }
 
+    /// <summary>
+    /// Builds a new header (<c>file[0..B')</c>) where the slot of <paramref name="record"/>'s type is replaced by
+    /// <paramref name="record"/>, or added when the file has none. Every other slot, unknown types included, is
+    /// copied byte for byte, and the records are written in ascending type order (docs/vault-format.md,
+    /// "Regras de escrita").
+    /// </summary>
+    /// <param name="file">The file this header was parsed from. Not modified.</param>
+    /// <param name="record">The new slot record, including its 3-byte header. Not modified.</param>
+    /// <returns>A new array holding the rebuilt header, ready for <see cref="VaultBody.Reseal"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="record"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="file"/> is shorter than this header, the record is
+    /// shorter than a slot header, or the resulting records do not form a valid v1 header.</exception>
+    internal byte[] WithSlot(ReadOnlySpan<byte> file, byte[] record)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+
+        if (file.Length < BodyOffset)
+        {
+            throw new ArgumentException("File is shorter than the header.", nameof(file));
+        }
+
+        if (record.Length < VaultFormat.SlotHeaderSize)
+        {
+            throw new ArgumentException("Slot record has an inconsistent length.", nameof(record));
+        }
+
+        var type = record[VaultFormat.SlotTypeOffset];
+        var records = new List<byte[]>(Slots.Count + 1);
+        foreach (var slot in Slots)
+        {
+            if (slot.Type != type)
+            {
+                records.Add(file.Slice(slot.Offset, slot.Length).ToArray());
+            }
+        }
+
+        records.Add(record);
+        return Build(records);
+    }
+
     // Steps 4 and 5 of "Validação na leitura": slot count, then each record, then the password slot.
     private static VaultHeader WalkSlots(ReadOnlySpan<byte> file)
     {
