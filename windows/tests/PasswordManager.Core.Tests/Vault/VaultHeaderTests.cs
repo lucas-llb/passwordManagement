@@ -460,4 +460,121 @@ public class VaultHeaderTests
         var inner = Assert.IsType<VaultFormatException>(exception.InnerException);
         Assert.Equal("Key slot uses an unsupported KDF algorithm.", inner.Message);
     }
+
+    // --- WithSlot ---
+
+    // A valid type-1 record with a different salt.
+    private static readonly byte[] Slot1b = With(Slot1, 13, 0xFF);
+
+    [Fact]
+    public void WithSlot_PasswordSlotInV2_ReplacesSlot1AndKeepsSlot2()
+    {
+        Assert.Equal(Header(2, Slot1b, Slot2), VaultHeader.Parse(V2).WithSlot(V2, Slot1b));
+    }
+
+    [Fact]
+    public void WithSlot_PasswordSlotInV0_ReplacesSlot1()
+    {
+        Assert.Equal(Header(1, Slot1b), VaultHeader.Parse(V0).WithSlot(V0, Slot1b));
+    }
+
+    [Fact]
+    public void WithSlot_RecoveryKitSlotInV0_AddsSlot()
+    {
+        Assert.Equal(F2, VaultHeader.Parse(V0).WithSlot(V0, Slot2));
+    }
+
+    [Fact]
+    public void WithSlot_UnknownSlots_AreKeptByteForByte()
+    {
+        var file = Header(3, Slot1, Unknown(3, 5), Unknown(255, 0), Z40);
+
+        var header = VaultHeader.Parse(file).WithSlot(file, Slot1b);
+
+        Assert.Equal(Header(3, Slot1b, Unknown(3, 5), Unknown(255, 0)), header);
+    }
+
+    [Fact]
+    public void WithSlot_SlotsOutOfOrder_AreSortedByType()
+    {
+        var file = Header(2, Unknown(3, 5), Slot1, Z40);
+
+        var header = VaultHeader.Parse(file).WithSlot(file, Slot1b);
+
+        Assert.Equal(Header(2, Slot1b, Unknown(3, 5)), header);
+    }
+
+    [Fact]
+    public void WithSlot_NullRecord_ThrowsArgumentNull()
+    {
+        var header = VaultHeader.Parse(V0);
+
+        Assert.Throws<ArgumentNullException>(() => header.WithSlot(V0, null!));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public void WithSlot_RecordShorterThanSlotHeader_ThrowsArgument(int length)
+    {
+        var header = VaultHeader.Parse(V0);
+        var record = new byte[length];
+        if (length > 0)
+        {
+            record[0] = 0x01;
+        }
+
+        var exception = Assert.Throws<ArgumentException>(() => header.WithSlot(V0, record));
+
+        Assert.Equal("record", exception.ParamName);
+    }
+
+    [Fact]
+    public void WithSlot_SlotType0_ThrowsArgument()
+    {
+        var header = VaultHeader.Parse(V0);
+
+        Assert.Throws<ArgumentException>(() => header.WithSlot(V0, [0x00, 0x00, 0x00]));
+    }
+
+    [Fact]
+    public void WithSlot_UnsupportedKdfAlgorithm_ThrowsArgument()
+    {
+        var header = VaultHeader.Parse(V0);
+
+        Assert.Throws<ArgumentException>(() => header.WithSlot(V0, With(Slot1, 3, 0x02)));
+    }
+
+    [Fact]
+    public void WithSlot_NinthSlot_ThrowsArgument()
+    {
+        byte[][] records = [Slot1, .. Enumerable.Range(3, 7).Select(type => Unknown((byte)type, 0))];
+        var file = Header(8, [.. records, Z40]);
+        var header = VaultHeader.Parse(file);
+
+        Assert.Equal(8, header.Slots.Count);
+        Assert.Throws<ArgumentException>(() => header.WithSlot(file, Slot2));
+    }
+
+    [Fact]
+    public void WithSlot_FileShorterThanHeader_ThrowsArgument()
+    {
+        var header = VaultHeader.Parse(V0);
+
+        var exception = Assert.Throws<ArgumentException>(() => header.WithSlot(V0.AsSpan(0, 100), Slot1b));
+
+        Assert.Equal("file", exception.ParamName);
+    }
+
+    [Fact]
+    public void WithSlot_Inputs_AreNotModified()
+    {
+        var file = (byte[])V2.Clone();
+        var record = (byte[])Slot1b.Clone();
+
+        VaultHeader.Parse(file).WithSlot(file, record);
+
+        Assert.Equal(V2, file);
+        Assert.Equal(Slot1b, record);
+    }
 }
