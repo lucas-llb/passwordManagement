@@ -1,3 +1,4 @@
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.ApplicationModel.Resources;
 using PasswordManager.App.Views;
@@ -16,6 +17,9 @@ public sealed partial class MainWindow : Window
 
         InitializeComponent();
         Title = new ResourceLoader().GetString("AppTitle");
+
+        // The title bar follows the system app mode too, live, like the XAML content.
+        AppWindow.TitleBar.PreferredTheme = TitleBarTheme.UseDefaultAppMode;
 
         _navigation = navigation;
         _navigation.Navigated += OnNavigated;

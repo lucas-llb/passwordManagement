@@ -7,7 +7,8 @@ namespace PasswordManager.App.E2E.Tests;
 // Every visible text of every screen must come from Strings/pt-BR/Resources.resw (or be data the user or a test vector owns).
 public sealed class LocalizationE2ETests
 {
-    private static readonly ControlType[] TextControlTypes = [ControlType.Text, ControlType.Button, ControlType.Edit];
+    private static readonly ControlType[] TextControlTypes =
+        [ControlType.Text, ControlType.Button, ControlType.Edit, ControlType.List, ControlType.ListItem];
 
     [Fact]
     public void EmptyFolder_ProfileTextsComeFromResources()
@@ -50,6 +51,7 @@ public sealed class LocalizationE2ETests
         // Profiles
         var profile = Assert.Single(app.Items("ProfilesList"));
         AssertNameFromResources(app, "ProfilesTitle");
+        AssertNameFromResources(app, "ProfilesList");
         AssertEveryTextFromResourcesOrData(app, SeededVault.ProfileName);
         profile.Patterns.Invoke.Pattern.Invoke();
 
@@ -77,6 +79,7 @@ public sealed class LocalizationE2ETests
         Assert.Equal(SeededVault.Entries.Length, items.Length);
         AssertNameFromResources(app, "EntriesTitle");
         AssertNameFromResources(app, "EntriesLock");
+        AssertNameFromResources(app, "EntriesList");
         AssertEveryTextFromResourcesOrData(app, EntryTexts());
 
         // Detail of the first entry
@@ -109,12 +112,13 @@ public sealed class LocalizationE2ETests
     private static void AssertNameFromResources(AppSession app, string automationId, string? uid = null) =>
         Assert.Equal(AppResources.ExpectedName(uid ?? automationId), app.WaitFor(automationId).Name);
 
-    // Sweeps the window content for the Text, Button and Edit elements and fails on any name that is neither a resw value
-    // nor data. Two subtrees are skipped because the OS or WinUI names them in the system language: the title bar and
-    // the scroll bars (their line and page buttons). List items are left out too: their names are not texts of the app
-    // yet (W-13). Call it right after the screen's anchor element is shown, and on Unlock only while the PasswordBox is
-    // empty, because its reveal button is named by WinUI, not by the resw. An element without a Name (for example the
-    // TextBlock of an empty username) has no text, so it is skipped; reading Name directly would throw there.
+    // Sweeps the window content for the Text, Button, Edit, List and ListItem elements and fails on any name that is
+    // neither a resw value nor data; list items are named from their data (the profile name, the entry title). Two
+    // subtrees are skipped because the OS or WinUI names them in the system language: the title bar and the scroll bars
+    // (their line and page buttons). Call it right after the screen's anchor element is shown, and on Unlock only while
+    // the PasswordBox is empty, because its reveal button is named by WinUI, not by the resw. An element without a Name
+    // (for example the TextBlock of an empty username) has no text, so it is skipped; reading Name directly would throw
+    // there.
     private static void AssertEveryTextFromResourcesOrData(AppSession app, params IEnumerable<string> data)
     {
         var allowed = new HashSet<string>(AppResources.Strings.Values, StringComparer.Ordinal);

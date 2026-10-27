@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using PasswordManager.ViewModels;
@@ -18,4 +19,6 @@ public sealed partial class EntryDetailPage : Page
         base.OnNavigatedTo(e);
         ViewModel = (EntryDetailViewModel)e.Parameter;
     }
+
+    private void OnLoaded(object sender, RoutedEventArgs e) => DetailTitle.Focus(FocusState.Programmatic);
 }

@@ -4,7 +4,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:PasswordManager.App.Views"
-    xmlns:profiles="using:PasswordManager.Core.Profiles">
+    xmlns:profiles="using:PasswordManager.Core.Profiles"
+    Loaded="OnLoaded">
 
     <Grid Padding="24" RowSpacing="16">
         <Grid.RowDefinitions>
@@ -25,8 +26,11 @@
             Visibility="{x:Bind ViewModel.LoadFailed, Mode=OneWay}" />
 
         <ListView
+            x:Name="ProfilesList"
             Grid.Row="2"
             AutomationProperties.AutomationId="ProfilesList"
+            x:Uid="ProfilesList"
+            ContainerContentChanging="{x:Bind local:ProfilesPage.OnProfileContainerContentChanging}"
             IsItemClickEnabled="True"
             ItemClick="OnProfileClick"
             ItemsSource="{x:Bind ViewModel.Profiles, Mode=OneWay}"

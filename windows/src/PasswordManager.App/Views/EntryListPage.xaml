@@ -3,7 +3,9 @@
     x:Class="PasswordManager.App.Views.EntryListPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:vault="using:PasswordManager.Core.Vault">
+    xmlns:local="using:PasswordManager.App.Views"
+    xmlns:vault="using:PasswordManager.Core.Vault"
+    Loaded="OnLoaded">
 
     <Grid Padding="24" RowSpacing="16">
         <Grid.RowDefinitions>
@@ -21,6 +23,7 @@
                 x:Uid="EntriesTitle"
                 Style="{StaticResource TitleTextBlockStyle}" />
             <Button
+                x:Name="LockButton"
                 Grid.Column="1"
                 AutomationProperties.AutomationId="EntriesLock"
                 x:Uid="EntriesLock"
@@ -28,8 +31,11 @@
         </Grid>
 
         <ListView
+            x:Name="EntriesList"
             Grid.Row="1"
             AutomationProperties.AutomationId="EntriesList"
+            x:Uid="EntriesList"
+            ContainerContentChanging="{x:Bind local:EntryListPage.OnEntryContainerContentChanging}"
             IsItemClickEnabled="True"
             ItemClick="OnEntryClick"
             ItemsSource="{x:Bind ViewModel.Entries, Mode=OneWay}"
