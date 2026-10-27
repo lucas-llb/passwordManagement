@@ -10,27 +10,35 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Button x:Uid="NavBack" Command="{x:Bind ViewModel.GoBackCommand}" />
+        <Button
+            AutomationProperties.AutomationId="DetailBack"
+            x:Uid="NavBack"
+            Command="{x:Bind ViewModel.GoBackCommand}" />
 
         <ScrollViewer Grid.Row="1">
             <StackPanel MaxWidth="480" HorizontalAlignment="Left" Spacing="12">
                 <TextBox
+                    AutomationProperties.AutomationId="DetailTitle"
                     x:Uid="DetailTitle"
                     IsReadOnly="True"
                     Text="{x:Bind ViewModel.Entry.Title}" />
                 <TextBox
+                    AutomationProperties.AutomationId="DetailUsername"
                     x:Uid="DetailUsername"
                     IsReadOnly="True"
                     Text="{x:Bind ViewModel.Entry.Username}" />
                 <TextBox
+                    AutomationProperties.AutomationId="DetailUrl"
                     x:Uid="DetailUrl"
                     IsReadOnly="True"
                     Text="{x:Bind ViewModel.Entry.Url}" />
                 <TextBox
+                    AutomationProperties.AutomationId="DetailFolder"
                     x:Uid="DetailFolder"
                     IsReadOnly="True"
                     Text="{x:Bind ViewModel.Entry.Folder}" />
                 <TextBox
+                    AutomationProperties.AutomationId="DetailNotes"
                     x:Uid="DetailNotes"
                     MinHeight="96"
                     AcceptsReturn="True"

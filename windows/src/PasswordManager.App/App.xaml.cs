@@ -18,11 +18,31 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         var navigation = new NavigationService();
-        var repository = new ProfileRepository(ProfileRepository.GetDefaultDirectory());
+        var repository = new ProfileRepository(ResolveVaultsDirectory());
 
         _window = new MainWindow(navigation);
         _window.Activate();
 
         navigation.ResetTo(new ProfilesViewModel(repository, navigation));
+    }
+
+    // Debug builds only: the E2E tests pass --vaults-dir <absolute folder> so they never touch the real vaults folder.
+    // A bad value crashes the launch instead of falling back to the real folder.
+    private static string ResolveVaultsDirectory()
+    {
+#if DEBUG
+        var arguments = Environment.GetCommandLineArgs();
+        var index = Array.IndexOf(arguments, "--vaults-dir");
+        if (index >= 0)
+        {
+            if (index + 1 >= arguments.Length || !Path.IsPathFullyQualified(arguments[index + 1]))
+            {
+                throw new InvalidOperationException("--vaults-dir needs an absolute folder path.");
+            }
+
+            return arguments[index + 1];
+        }
+#endif
+        return ProfileRepository.GetDefaultDirectory();
     }
 }

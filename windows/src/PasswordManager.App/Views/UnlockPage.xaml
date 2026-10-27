@@ -12,24 +12,36 @@
             VerticalAlignment="Center"
             Spacing="16">
             <TextBlock x:Uid="UnlockTitle" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="{x:Bind ViewModel.Profile.DisplayName}" />
+            <TextBlock
+                AutomationProperties.AutomationId="UnlockProfileName"
+                Style="{StaticResource SubtitleTextBlockStyle}"
+                Text="{x:Bind ViewModel.Profile.DisplayName}" />
 
-            <PasswordBox x:Name="PasswordInput" x:Uid="UnlockPassword" />
+            <PasswordBox
+                x:Name="PasswordInput"
+                AutomationProperties.AutomationId="UnlockPassword"
+                x:Uid="UnlockPassword" />
 
             <TextBlock
+                AutomationProperties.AutomationId="UnlockWrongPassword"
                 x:Uid="UnlockWrongPassword"
                 Visibility="{x:Bind local:UnlockPage.IsWrongPassword(ViewModel.Error), Mode=OneWay}" />
             <TextBlock
+                AutomationProperties.AutomationId="UnlockVaultUnreadable"
                 x:Uid="UnlockVaultUnreadable"
                 Visibility="{x:Bind local:UnlockPage.IsVaultUnreadable(ViewModel.Error), Mode=OneWay}" />
 
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <Button
+                    AutomationProperties.AutomationId="UnlockButton"
                     x:Uid="UnlockButton"
                     Click="OnUnlockClick"
                     IsEnabled="{x:Bind local:UnlockPage.IsNot(ViewModel.UnlockCommand.IsRunning), Mode=OneWay}"
                     Style="{StaticResource AccentButtonStyle}" />
-                <Button x:Uid="NavBack" Command="{x:Bind ViewModel.GoBackCommand}" />
+                <Button
+                    AutomationProperties.AutomationId="UnlockBack"
+                    x:Uid="NavBack"
+                    Command="{x:Bind ViewModel.GoBackCommand}" />
                 <ProgressRing
                     Width="24"
                     Height="24"
