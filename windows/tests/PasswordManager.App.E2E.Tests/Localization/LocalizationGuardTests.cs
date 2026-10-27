@@ -104,6 +104,8 @@ public sealed class LocalizationGuardTests
             throw new InvalidOperationException("Developer message.");
             throw new ArgumentException($"Bad value {value}.", nameof(value));
             var index = Array.IndexOf(arguments, "--vaults-dir");
+            [LibraryImport("user32.dll", SetLastError = true)]
+            [DllImport("user32.dll", EntryPoint = "SetWindowDisplayAffinity")]
             // "comment"
             /// <c>"doc comment"</c>
             /* "block comment" */
@@ -112,6 +114,29 @@ public sealed class LocalizationGuardTests
             """;
 
         Assert.Empty(LocalizationGuard.FindCodeLiterals(source));
+    }
+
+    [Fact]
+    public void FindCodeLiterals_LiteralAfterANativeImportAttribute_IsReported()
+    {
+        const string source = """[LibraryImport("user32.dll")] static partial void F(string s = "Texto");""";
+
+        var violation = Assert.Single(LocalizationGuard.FindCodeLiterals(source));
+
+        Assert.Contains("\"Texto\"", violation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FindCodeLiterals_NativeImportOnAnotherLine_IsReported()
+    {
+        const string source = """
+            [LibraryImport(
+                "user32.dll")]
+            """;
+
+        var violation = Assert.Single(LocalizationGuard.FindCodeLiterals(source));
+
+        Assert.StartsWith("line 2:", violation, StringComparison.Ordinal);
     }
 
     [Fact]

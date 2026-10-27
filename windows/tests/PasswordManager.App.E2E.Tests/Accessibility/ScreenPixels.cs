@@ -43,6 +43,33 @@ internal static class ScreenPixels
         return (background, RelativeLuminance(background), MaxContrast(image.Bitmap, background));
     }
 
+    // The fraction of pixels in which any channel differs by more than tolerance: how much of two captures of the same
+    // screen area changed. The tolerance absorbs blending noise and subtle gradients.
+    public static double ChangedFraction(Bitmap a, Bitmap b, int tolerance = 24)
+    {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+        if (a.Size != b.Size)
+        {
+            throw new ArgumentException($"The bitmaps differ in size: {a.Size} and {b.Size}.", nameof(b));
+        }
+
+        var first = Pixels(a);
+        var second = Pixels(b);
+        var changed = 0;
+        for (var i = 0; i < first.Length; i++)
+        {
+            var x = Color.FromArgb(first[i]);
+            var y = Color.FromArgb(second[i]);
+            if (Math.Abs(x.R - y.R) > tolerance || Math.Abs(x.G - y.G) > tolerance || Math.Abs(x.B - y.B) > tolerance)
+            {
+                changed++;
+            }
+        }
+
+        return first.Length == 0 ? 0 : (double)changed / first.Length;
+    }
+
     public static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
     private static bool IsSameShade(Color a, Color b) =>

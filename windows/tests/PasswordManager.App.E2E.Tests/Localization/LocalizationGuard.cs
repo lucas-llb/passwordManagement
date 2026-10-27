@@ -157,6 +157,10 @@ internal static partial class LocalizationGuard
     [GeneratedRegex(@"new\s+(?:\w+\.)*\w*Exception\s*\(")]
     private static partial Regex ExceptionConstructorRegex();
 
+    // "[LibraryImport(" or "[DllImport(" with no ")" after it: the literal is an argument of the native import attribute.
+    [GeneratedRegex(@"\[\s*(?:LibraryImport|DllImport)\s*\([^)\]]*$")]
+    private static partial Regex NativeImportAttributeRegex();
+
     private static string UidOf(string key) => key[..key.IndexOf('.', StringComparison.Ordinal)];
 
     // A value is a literal unless it is a markup extension; "{}" is the XAML escape that makes a brace-leading value literal.
@@ -179,6 +183,7 @@ internal static partial class LocalizationGuard
     private static bool IsAllowed(string source, StringLiteral literal) =>
         FollowsGetString(source, literal.Start)
         || IsInExceptionConstructor(source, literal.Start)
+        || IsInNativeImportAttribute(source, literal.Start)
         || string.Equals(source[literal.ContentStart..literal.ContentEnd], VaultsDirectorySwitch, StringComparison.Ordinal);
 
     // The code right before the literal, ignoring whitespace, is "GetString(".
@@ -200,10 +205,17 @@ internal static partial class LocalizationGuard
     }
 
     // "new SomeException(" appears on the literal's line before the literal.
-    private static bool IsInExceptionConstructor(string source, int literalStart)
+    private static bool IsInExceptionConstructor(string source, int literalStart) =>
+        ExceptionConstructorRegex().IsMatch(TextBeforeOnLine(source, literalStart));
+
+    // "[LibraryImport(" or "[DllImport(" opens on the literal's line before the literal, and no ")" has closed it yet.
+    private static bool IsInNativeImportAttribute(string source, int literalStart) =>
+        NativeImportAttributeRegex().IsMatch(TextBeforeOnLine(source, literalStart));
+
+    private static ReadOnlySpan<char> TextBeforeOnLine(string source, int index)
     {
-        var lineStart = literalStart == 0 ? 0 : source.LastIndexOf('\n', literalStart - 1) + 1;
-        return ExceptionConstructorRegex().IsMatch(source.AsSpan(lineStart, literalStart - lineStart));
+        var lineStart = index == 0 ? 0 : source.LastIndexOf('\n', index - 1) + 1;
+        return source.AsSpan(lineStart, index - lineStart);
     }
 
     private static int SkipLineComment(string source, int index)

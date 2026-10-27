@@ -8,6 +8,12 @@ namespace PasswordManager.ViewModels;
 /// </summary>
 public abstract class PageViewModel : ObservableObject
 {
+    /// <summary>
+    /// True only for pages that show nothing from an open vault. The window excludes every other page from screen
+    /// capture (W-14), so a new page is protected until it opts out.
+    /// </summary>
+    public virtual bool AllowsScreenCapture => false;
+
     /// <summary>Called after this page becomes the current one and before <c>Navigated</c> is raised.</summary>
     public virtual void OnNavigatedTo()
     {

@@ -26,6 +26,9 @@ public sealed partial class UnlockViewModel : PageViewModel
     /// <summary>The profile being unlocked.</summary>
     public Profile Profile { get; }
 
+    /// <inheritdoc />
+    public override bool AllowsScreenCapture => true;
+
     /// <summary>The failure of the last attempt; the view maps it to a text.</summary>
     [ObservableProperty]
     public partial UnlockError Error { get; private set; }
