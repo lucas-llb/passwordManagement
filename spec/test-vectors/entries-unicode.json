@@ -1,0 +1,68 @@
+{
+  "description": "Quatro entradas com acentos, emoji (inclusive sequência ZWJ), CJK, hebraico, árabe, escapes JSON e uma string NFD nas notas; senha NFC não ASCII (KDF de teste 1024 KiB/2/1).",
+  "file": "entries-unicode.pmvault",
+  "formatVersion": 1,
+  "password": "Senha fictícia: açaí, maçã e piñata \uD83D\uDD10",
+  "vaultKeyHex": "a1e04a28f4f72fe2c77ccf11baf2a2fb0d428b318f88172560d99be3d8410533",
+  "slots": [
+    {
+      "type": 1,
+      "kdfMemoryKiB": 1024,
+      "kdfIterations": 2,
+      "kdfParallelism": 1
+    }
+  ],
+  "bodyOffset": 108,
+  "content": {
+    "entries": [
+      {
+        "id": "3f2a8c1d-5b6e-4f70-8a91-b2c3d4e5f601",
+        "title": "Conta de luz — São João",
+        "username": "joão.conceição@example.com",
+        "password": "Pão-de-açúcar-ÁÉÍÓÚ-ãõ-ç",
+        "url": "https://example.com/serviços/ação",
+        "notes": "Vencimento todo dia 10; é fictício.",
+        "folder": "Finanças",
+        "favorite": true,
+        "createdAt": "2026-01-15T08:30:15.123Z",
+        "updatedAt": "2026-03-02T19:45:00.987Z"
+      },
+      {
+        "id": "3f2a8c1d-5b6e-4f70-8a91-b2c3d4e5f602",
+        "title": "Família \uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67 \uD83C\uDFE0",
+        "username": "familia@example.com",
+        "password": "senha-\uD83D\uDC68‍\uD83D\uDC69‍\uD83D\uDC67-\uD83D\uDD11-fictícia",
+        "url": "https://example.org/família",
+        "notes": "",
+        "folder": "Casa \uD83C\uDFE1",
+        "favorite": false,
+        "createdAt": "2026-02-01T00:00:00.001Z",
+        "updatedAt": "2026-02-28T23:59:59.999Z"
+      },
+      {
+        "id": "3f2a8c1d-5b6e-4f70-8a91-b2c3d4e5f603",
+        "title": "東京アカウント",
+        "username": "用户名",
+        "password": "密码-סיסמה-كلمة",
+        "url": "https://example.jp/ログイン",
+        "notes": "שלום עולם — مرحبا بالعالم — 你好，世界",
+        "folder": "国际",
+        "favorite": true,
+        "createdAt": "2026-04-10T12:00:00.250Z",
+        "updatedAt": "2026-04-11T13:14:15.500Z"
+      },
+      {
+        "id": "3f2a8c1d-5b6e-4f70-8a91-b2c3d4e5f604",
+        "title": "Nota segura",
+        "username": "",
+        "password": "",
+        "url": "",
+        "notes": "linha 1\nlinha 2\tcom tab\n\"aspas\" e barra \\ invertida\nCafé em NFD",
+        "folder": "",
+        "favorite": false,
+        "createdAt": "2026-05-05T05:05:05.005Z",
+        "updatedAt": "2026-06-06T06:06:06.066Z"
+      }
+    ]
+  }
+}

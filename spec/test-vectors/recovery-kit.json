@@ -1,0 +1,52 @@
+{
+  "description": "Cofre criado pelo caminho real de novo perfil: slot de senha e Kit de Recuperação com o KDF padrão (64 MiB/3/1) e duas entradas, uma com emoji.",
+  "file": "recovery-kit.pmvault",
+  "formatVersion": 1,
+  "password": "fictitious recovery kit passphrase",
+  "vaultKeyHex": "5989622bd967d38df9bc4d05b73591736011f7acbb8c0b807fd27694b53a973a",
+  "recoveryKit": "PXYX-G4EJ-8DPR-VZAK-5NMS-QKQR-S1RM-VG3X",
+  "recoveryKeyHex": "b77dd811d2436d8dfd532d699bcef8c8714dc07d",
+  "slots": [
+    {
+      "type": 1,
+      "kdfMemoryKiB": 65536,
+      "kdfIterations": 3,
+      "kdfParallelism": 1
+    },
+    {
+      "type": 2,
+      "kdfMemoryKiB": 65536,
+      "kdfIterations": 3,
+      "kdfParallelism": 1
+    }
+  ],
+  "bodyOffset": 209,
+  "content": {
+    "entries": [
+      {
+        "id": "8e4b2a90-1c3d-4e5f-9a0b-c1d2e3f4a501",
+        "title": "E-mail pessoal",
+        "username": "pessoa@example.com",
+        "password": "not-a-real-password",
+        "url": "https://mail.example.com",
+        "notes": "Conta fictícia.",
+        "folder": "Pessoal",
+        "favorite": true,
+        "createdAt": "2026-07-01T09:00:00.000Z",
+        "updatedAt": "2026-07-02T10:30:00.450Z"
+      },
+      {
+        "id": "8e4b2a90-1c3d-4e5f-9a0b-c1d2e3f4a502",
+        "title": "Banco \uD83C\uDFE6",
+        "username": "cliente-0001",
+        "password": "fake-\uD83D\uDD12-password",
+        "url": "https://bank.example.net",
+        "notes": "",
+        "folder": "Finanças",
+        "favorite": false,
+        "createdAt": "2026-07-03T14:15:16.170Z",
+        "updatedAt": "2026-07-03T14:15:16.170Z"
+      }
+    ]
+  }
+}

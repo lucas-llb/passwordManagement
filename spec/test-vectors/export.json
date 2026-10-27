@@ -1,0 +1,45 @@
+{
+  "description": "Exportação cifrada do vetor recovery-kit: Vault Key nova, só um slot de senha (senha de exportação, KDF de teste 1024 KiB/2/1) e o mesmo conteúdo.",
+  "file": "export.pmvault",
+  "formatVersion": 1,
+  "password": "fictitious export passphrase",
+  "vaultKeyHex": "8b10345d9c591544d95aff870837a9d2d12827caed57420db6e5a9ad1f811e6e",
+  "sourceVector": "recovery-kit",
+  "slots": [
+    {
+      "type": 1,
+      "kdfMemoryKiB": 1024,
+      "kdfIterations": 2,
+      "kdfParallelism": 1
+    }
+  ],
+  "bodyOffset": 108,
+  "content": {
+    "entries": [
+      {
+        "id": "8e4b2a90-1c3d-4e5f-9a0b-c1d2e3f4a501",
+        "title": "E-mail pessoal",
+        "username": "pessoa@example.com",
+        "password": "not-a-real-password",
+        "url": "https://mail.example.com",
+        "notes": "Conta fictícia.",
+        "folder": "Pessoal",
+        "favorite": true,
+        "createdAt": "2026-07-01T09:00:00.000Z",
+        "updatedAt": "2026-07-02T10:30:00.450Z"
+      },
+      {
+        "id": "8e4b2a90-1c3d-4e5f-9a0b-c1d2e3f4a502",
+        "title": "Banco \uD83C\uDFE6",
+        "username": "cliente-0001",
+        "password": "fake-\uD83D\uDD12-password",
+        "url": "https://bank.example.net",
+        "notes": "",
+        "folder": "Finanças",
+        "favorite": false,
+        "createdAt": "2026-07-03T14:15:16.170Z",
+        "updatedAt": "2026-07-03T14:15:16.170Z"
+      }
+    ]
+  }
+}
