@@ -1,6 +1,6 @@
 # Arquitetura do sistema
 
-> Retrato do código em out/2026, depois da W-11 (fase F1 do [épico Windows](epic-windows-release.md) concluída; a W-11 da F2 também).
+> Retrato do código em out/2026, depois da W-11 (com testes E2E; fase F1 do [épico Windows](epic-windows-release.md) concluída; a W-11 da F2 também).
 > Deve ser atualizado no mesmo PR de toda mudança relevante (AGENTS.md §9).
 > Regras obrigatórias: [AGENTS.md](../AGENTS.md). Layout de bytes: [vault-format.md](vault-format.md). Ameaças: [threat-model.md](threat-model.md).
 > Este documento descreve **como o código está organizado**; quando houver conflito, AGENTS.md e vault-format.md prevalecem.
@@ -41,7 +41,7 @@ Princípios que moldam a arquitetura (AGENTS §1): segurança, offline de verdad
 |---|---|
 | Formato v1 (`vault-format.md`) | Layout fechado (W-01). Congela quando o `core` Android passar nos vetores. |
 | `PasswordManager.Core` (Windows) | **Completo para a F1**: KDF, wrap, corpo, arquivo, perfis, troca de senha, Kit de Recuperação, `VaultSession` e vetores (W-02…W-10). |
-| `PasswordManager.App` (WinUI 3) | Telas de perfis, desbloqueio, lista e detalhe ligadas por um `Frame` (W-11). Ainda sem edição de entradas, busca, criação de perfil nem campo de senha das entradas. Sem pacote MSIX (`WindowsPackageType=None`). |
+| `PasswordManager.App` (WinUI 3) | Telas de perfis, desbloqueio, lista e detalhe ligadas por um `Frame` (W-11), com o fluxo coberto por testes E2E (FlaUI, só Debug). Ainda sem edição de entradas, busca, criação de perfil nem campo de senha das entradas. Sem pacote MSIX (`WindowsPackageType=None`). |
 | `PasswordManager.ViewModels` (`net10.0`, sem WinUI) | Navegação (`NavigationService`, pilha pura) e quatro ViewModels de página, testados sem janela (W-11). |
 | `:core` (Android) | Parcial: KDF, wrap, corpo, cabeçalho, slots e arquivo. Faltam Kit de Recuperação, troca de senha, sessão, perfis e o teste dos vetores. |
 | `:app` (Android) | Esqueleto: tela vazia de perfis, `FLAG_SECURE`, sem `INTERNET`, sem backup. |
@@ -62,6 +62,7 @@ windows/
   src/PasswordManager.ViewModels/ net10.0 sem WinUI: Navigation/ e os ViewModels de página
   tests/PasswordManager.Core.Tests/   xUnit v3, espelha as pastas do Core + TestVectors/
   tests/PasswordManager.ViewModels.Tests/   xUnit v3, ViewModels e fluxo de navegação
+  tests/PasswordManager.App.E2E.Tests/      xUnit v3 + FlaUI UIA3, dirige o app Debug real (§9.3)
 android/
   gradle/libs.versions.toml       todas as versões
   core/                           com.passwordmanagement.core (crypto/, vault/)
@@ -265,7 +266,7 @@ flowchart TB
 
 - **Views**: só XAML e `x:Bind` para os ViewModels. A `MainWindow` escuta `NavigationService.Navigated` e chama `Frame.Navigate` com a página do tipo de `Current`; cada caso tem um `typeof` literal, para o trimmer enxergar os tipos.
 - **ViewModels**: `ObservableObject` e `RelayCommand` do CommunityToolkit.Mvvm; nenhum tipo de UI. Expõem estado (`UnlockError`, `IsEmpty`, `LoadFailed`), e a View escolhe o texto no `.resw`.
-- **Composição**: `App.OnLaunched` cria o `NavigationService` e o `ProfileRepository`, entrega o serviço à `MainWindow` e mostra a tela de perfis. Não há container de DI.
+- **Composição**: `App.OnLaunched` cria o `NavigationService` e o `ProfileRepository`, entrega o serviço à `MainWindow` e mostra a tela de perfis. Não há container de DI. O diretório de cofres vem de `ResolveVaultsDirectory`: no Debug, `--vaults-dir <caminho absoluto>` substitui `ProfileRepository.GetDefaultDirectory()` (usado pelos testes E2E); um valor inválido aborta a inicialização. No Release esse código não é compilado.
 
 ### 9.2 Navegação
 
@@ -288,6 +289,16 @@ stateDiagram-v2
 - **Senha como `char[]`**: a `UnlockPage` copia o `PasswordBox` para um `char[]` e esvazia o campo. O comando assume o array e o zera no `finally`, mesmo em falha. O `PasswordBox` só expõe `string`; isso fica como ponto em aberto.
 - **Sessão**: a `VaultSession` nasce no `UnlockViewModel`, passa à `EntryListViewModel` ao desbloquear e é descartada no `Lock` ou quando o desbloqueio falha.
 
+### 9.3 Testes E2E
+
+O projeto `windows/tests/PasswordManager.App.E2E.Tests/` abre o `PasswordManager.App.exe` Debug de verdade e o dirige pela UI Automation (FlaUI.UIA3). Usa só padrões de UIA (`Invoke` em botões e itens, `Value` nas caixas de texto e no campo de senha): nenhum clique de mouse nem tecla é enviado. Os cinco fluxos de `NavigationE2ETests` cobrem perfis vazios, lista de perfis corrompida, cofre ausente, senha errada e o caminho desbloquear → detalhe → bloquear, seguindo as regras de §9.2.
+
+- **Isolamento**: cada teste cria uma pasta `pm-e2e-*` em `%TEMP%`, passa o caminho em `--vaults-dir` e a apaga no fim, inclusive após falha. O cofre vem de `spec/test-vectors/entries-unicode.pmvault`, e o `profiles.json` é escrito pelo próprio teste. Os testes nunca tocam em `%LOCALAPPDATA%\PasswordManagement\vaults\`. Se o processo de teste morrer no meio de um teste, o app pode ficar aberto: encerre `PasswordManager.App` manualmente.
+- **Uma janela por vez**: `AssemblyInfo.cs` desliga o paralelismo do xUnit, então só existe uma janela do app em cada momento.
+- **Ids como contrato**: todo elemento que um teste usa tem `AutomationProperties.AutomationId` (os ids estão nas quatro Views). Os testes localizam por id, nunca por texto. `AutomationProperties.Name` fica com a W-13 (a11y). Um `Name` novo ou um template reestruturado não pode remover um id.
+- **Só Debug**: o gancho `--vaults-dir` existe só no build Debug (`#if DEBUG`). Em Release os testes ficam ignorados com o motivo "E2E tests run only in Debug". O executável é procurado num caminho fixo, `bin\Debug\net10.0-windows10.0.26100.0\<rid>\`; mudar o TFM, o RID ou o `OutputPath` exige atualizar o `.csproj` de E2E.
+- **Desktop interativo**: `dotnet test --solution` precisa de uma sessão de usuário desbloqueada, porque as janelas do app abrem e pegam o foco. Para rodar só o E2E, a partir de `windows/`: `dotnet test --project tests/PasswordManager.App.E2E.Tests/PasswordManager.App.E2E.Tests.csproj` (ele compila o app Debug antes).
+
 ## 10. Android `:core`
 
 Mesma divisão de pastas do Windows, com nomes equivalentes:
@@ -308,6 +319,7 @@ Os testes unitários rodam na JVM do host com `lazysodium-java` (só no escopo d
 |---|---|---|
 | `windows/tests/PasswordManager.Core.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** | ~1.180 testes: KDF com valores conhecidos, wrap/unwrap, corpo, adulteração byte a byte de cada região, arquivo atômico, perfis, troca de senha, kit, sessão (inclusive concorrência) e vetores. |
 | `windows/tests/PasswordManager.ViewModels.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** | 41 testes sem janela: `NavigationService`, os quatro ViewModels de página (inclusive a senha zerada depois do desbloqueio) e o fluxo Perfis → Desbloqueio → Lista → Detalhe → Voltar → Bloquear. |
+| `windows/tests/PasswordManager.App.E2E.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** (só Debug; precisa de desktop interativo) | 5 fluxos de ponta a ponta no app real, dirigido pela UI Automation: perfis vazios, lista corrompida, cofre ausente, senha errada e desbloquear → detalhe → bloquear. Detalhes em §9.3. |
 | `android/core/src/test` | `./gradlew :core:testDebugUnitTest` (em `android/`) | KDF, wrap, corpo, cabeçalho, slots, arquivo, JSON. |
 | `spec/test-vectors/` | lidos pelo `TestVectorTests` | Cofre vazio, Unicode/emoji, kit (64 MiB/3/1 reais) e exportação. O manifesto JSON descreve o resultado esperado de cada um. |
 
@@ -321,6 +333,7 @@ Os vetores foram gerados uma vez por `TestVectorGenerator` (teste explícito, qu
 | Windows ViewModels | `CommunityToolkit.Mvvm` | `ObservableObject` e `RelayCommand`; sem WinUI nem rede |
 | Windows App | `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`, `CommunityToolkit.Mvvm` | WinUI 3 e MVVM |
 | Windows testes | `xunit.v3` | testes |
+| Windows testes E2E | `FlaUI.UIA3` (traz `FlaUI.Core` e `Interop.UIAutomationClient`) | UI Automation local para dirigir o app; só no projeto de teste, sem rede |
 | Android core | `lazysodium-android` + `jna` (aar), `kotlinx-serialization-json` | libsodium e JSON |
 | Android app | AndroidX (Compose BOM, Material 3, Activity, Lifecycle, Biometric) | UI e biometria |
 
@@ -336,4 +349,5 @@ Versões fixadas em `Directory.Packages.props` (com lockfiles) e `libs.versions.
 
 - Depois de `ChangePassword`, o `.bak` ainda abre com a senha antiga até o próximo `Save` (decisão da W-07/W-09, ainda não resolvida).
 - `PasswordBox` só expõe `string`: a cópia gerenciada da senha mestra que a `UnlockPage` cria antes de virar `char[]` fica no heap até o GC. Limite aceito por enquanto; revisar na W-17 e na W-32.
+- E2E só exercita o app Debug; o binário Release/trimado não é coberto (D5/W-29).
 - Decisões D2–D6 do épico (canal de distribuição, certificado, medidor de força, trimming, versão mínima do Windows).

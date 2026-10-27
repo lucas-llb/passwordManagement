@@ -19,12 +19,14 @@
             <TextBlock x:Uid="EntriesTitle" Style="{StaticResource TitleTextBlockStyle}" />
             <Button
                 Grid.Column="1"
+                AutomationProperties.AutomationId="EntriesLock"
                 x:Uid="EntriesLock"
                 Command="{x:Bind ViewModel.LockCommand}" />
         </Grid>
 
         <ListView
             Grid.Row="1"
+            AutomationProperties.AutomationId="EntriesList"
             IsItemClickEnabled="True"
             ItemClick="OnEntryClick"
             ItemsSource="{x:Bind ViewModel.Entries, Mode=OneWay}"
@@ -32,7 +34,7 @@
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="vault:VaultEntry">
                     <StackPanel Margin="0,8">
-                        <TextBlock Text="{x:Bind Title}" />
+                        <TextBlock AutomationProperties.AutomationId="EntryTitle" Text="{x:Bind Title}" />
                         <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Username}" />
                     </StackPanel>
                 </DataTemplate>
@@ -41,6 +43,7 @@
 
         <TextBlock
             Grid.Row="1"
+            AutomationProperties.AutomationId="EntriesEmpty"
             x:Uid="EntriesEmpty"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"

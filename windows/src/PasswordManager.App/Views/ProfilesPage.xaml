@@ -17,18 +17,23 @@
 
         <TextBlock
             Grid.Row="1"
+            AutomationProperties.AutomationId="ProfilesLoadFailed"
             x:Uid="ProfilesLoadFailed"
             Visibility="{x:Bind ViewModel.LoadFailed, Mode=OneWay}" />
 
         <ListView
             Grid.Row="2"
+            AutomationProperties.AutomationId="ProfilesList"
             IsItemClickEnabled="True"
             ItemClick="OnProfileClick"
             ItemsSource="{x:Bind ViewModel.Profiles, Mode=OneWay}"
             SelectionMode="None">
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="profiles:Profile">
-                    <TextBlock Margin="0,12" Text="{x:Bind DisplayName}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="ProfileName"
+                        Margin="0,12"
+                        Text="{x:Bind DisplayName}" />
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
@@ -40,6 +45,7 @@
             Spacing="8"
             Visibility="{x:Bind local:ProfilesPage.ShowEmptyState(ViewModel.IsEmpty, ViewModel.LoadFailed), Mode=OneWay}">
             <TextBlock
+                AutomationProperties.AutomationId="ProfilesEmptyTitle"
                 x:Uid="ProfilesEmptyTitle"
                 HorizontalAlignment="Center"
                 Style="{StaticResource SubtitleTextBlockStyle}" />

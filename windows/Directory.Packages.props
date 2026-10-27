@@ -10,6 +10,7 @@
     <!-- Core -->
     <PackageVersion Include="NSec.Cryptography" Version="26.4.0" />
     <!-- Tests -->
+    <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
   </ItemGroup>
 </Project>
