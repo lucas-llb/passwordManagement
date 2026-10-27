@@ -1,0 +1,19 @@
+{
+  "description": "Cofre vazio, sem entradas, com só o slot de senha (senha ASCII, KDF de teste 1024 KiB/2/1).",
+  "file": "empty.pmvault",
+  "formatVersion": 1,
+  "password": "fictitious empty vault passphrase",
+  "vaultKeyHex": "d54e98e389e26f6774fdfbdae6ab907c347c34f80fca6fb03ce18639b067258a",
+  "slots": [
+    {
+      "type": 1,
+      "kdfMemoryKiB": 1024,
+      "kdfIterations": 2,
+      "kdfParallelism": 1
+    }
+  ],
+  "bodyOffset": 108,
+  "content": {
+    "entries": []
+  }
+}
