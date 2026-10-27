@@ -13,7 +13,10 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock x:Uid="ProfilesTitle" Style="{StaticResource TitleTextBlockStyle}" />
+        <TextBlock
+            AutomationProperties.AutomationId="ProfilesTitle"
+            x:Uid="ProfilesTitle"
+            Style="{StaticResource TitleTextBlockStyle}" />
 
         <TextBlock
             Grid.Row="1"
@@ -50,6 +53,7 @@
                 HorizontalAlignment="Center"
                 Style="{StaticResource SubtitleTextBlockStyle}" />
             <TextBlock
+                AutomationProperties.AutomationId="ProfilesEmptyHint"
                 x:Uid="ProfilesEmptyHint"
                 HorizontalAlignment="Center"
                 Style="{StaticResource BodyTextBlockStyle}" />

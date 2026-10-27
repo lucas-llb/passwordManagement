@@ -16,7 +16,10 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock x:Uid="EntriesTitle" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock
+                AutomationProperties.AutomationId="EntriesTitle"
+                x:Uid="EntriesTitle"
+                Style="{StaticResource TitleTextBlockStyle}" />
             <Button
                 Grid.Column="1"
                 AutomationProperties.AutomationId="EntriesLock"
