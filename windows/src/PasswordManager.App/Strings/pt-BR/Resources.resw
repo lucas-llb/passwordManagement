@@ -21,4 +21,52 @@
   <data name="ProfilesEmptyHint.Text" xml:space="preserve">
     <value>Crie um perfil com uma senha mestra para começar.</value>
   </data>
+  <data name="ProfilesTitle.Text" xml:space="preserve">
+    <value>Perfis</value>
+  </data>
+  <data name="ProfilesLoadFailed.Text" xml:space="preserve">
+    <value>Não foi possível ler a lista de perfis.</value>
+  </data>
+  <data name="UnlockTitle.Text" xml:space="preserve">
+    <value>Desbloquear cofre</value>
+  </data>
+  <data name="UnlockPassword.Header" xml:space="preserve">
+    <value>Senha mestra</value>
+  </data>
+  <data name="UnlockButton.Content" xml:space="preserve">
+    <value>Desbloquear</value>
+  </data>
+  <data name="UnlockWrongPassword.Text" xml:space="preserve">
+    <value>Senha mestra incorreta, ou o arquivo do cofre foi alterado.</value>
+  </data>
+  <data name="UnlockVaultUnreadable.Text" xml:space="preserve">
+    <value>Não foi possível ler o arquivo do cofre.</value>
+  </data>
+  <data name="NavBack.Content" xml:space="preserve">
+    <value>Voltar</value>
+  </data>
+  <data name="EntriesTitle.Text" xml:space="preserve">
+    <value>Entradas</value>
+  </data>
+  <data name="EntriesEmpty.Text" xml:space="preserve">
+    <value>Este cofre ainda não tem entradas.</value>
+  </data>
+  <data name="EntriesLock.Content" xml:space="preserve">
+    <value>Bloquear</value>
+  </data>
+  <data name="DetailTitle.Header" xml:space="preserve">
+    <value>Título</value>
+  </data>
+  <data name="DetailUsername.Header" xml:space="preserve">
+    <value>Usuário</value>
+  </data>
+  <data name="DetailUrl.Header" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="DetailFolder.Header" xml:space="preserve">
+    <value>Pasta</value>
+  </data>
+  <data name="DetailNotes.Header" xml:space="preserve">
+    <value>Notas</value>
+  </data>
 </root>

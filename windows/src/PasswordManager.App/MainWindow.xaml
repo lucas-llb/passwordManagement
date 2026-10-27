@@ -7,10 +7,6 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid Padding="24">
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
-            <TextBlock x:Uid="ProfilesEmptyTitle" Style="{StaticResource SubtitleTextBlockStyle}" HorizontalAlignment="Center" />
-            <TextBlock x:Uid="ProfilesEmptyHint" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
-        </StackPanel>
-    </Grid>
+    <!-- The navigation service of the ViewModels owns the stack, so the Frame keeps no history of its own. -->
+    <Frame x:Name="RootFrame" IsNavigationStackEnabled="False" />
 </Window>

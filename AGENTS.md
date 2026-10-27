@@ -38,6 +38,7 @@ Sync/nuvem, conta online, extensão de navegador, compartilhamento entre usuári
 /docs/
   vault-format.md                # especificação do formato do cofre (fonte da verdade)
   threat-model.md                # o que protegemos e de quem
+  architecture.md                # como o código está organizado (camadas, fluxos, estado atual)
 /spec/test-vectors/              # vetores de teste usados pelas DUAS plataformas (só dados fictícios)
 /windows/
   PasswordManager.slnx
@@ -200,3 +201,13 @@ Nunca gravar exportações em pasta temporária ou cache; sempre no local escolh
 - Não commitar keystores, `.jks`, `.pfx`, `local.properties`, cofres reais ou exportações.
 - Manter a solução simples: antes de adicionar tela, opção ou camada, verificar se ela é necessária para o escopo da seção 1.
 - Ao terminar uma tarefa, rodar os testes da plataforma afetada e relatar o resultado.
+- **Manter `docs/architecture.md` atualizado.** Toda mudança relevante atualiza o documento **no mesmo PR**. Contam como relevantes:
+  - classe, módulo ou camada nova, removida ou renomeada;
+  - mudança de responsabilidade ou de API pública do `Core`/`core`;
+  - fluxo novo ou alterado (desbloqueio, gravação, exportação etc.);
+  - arquivo novo em disco;
+  - dependência nova;
+  - mudança no estado de uma plataforma (seções "Estado atual" e "O que vem a seguir");
+  - ponto em aberto resolvido ou criado.
+
+  Atualizar também a data no topo do documento. Correções internas sem efeito na estrutura (bug, refatoração local, testes) não exigem atualização.
