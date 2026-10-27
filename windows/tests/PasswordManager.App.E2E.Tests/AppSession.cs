@@ -3,7 +3,9 @@ using System.Reflection;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
+using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
+using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA3;
 
 namespace PasswordManager.App.E2E.Tests;
@@ -80,6 +82,68 @@ internal sealed class AppSession : IDisposable
     public void Invoke(string automationId) => WaitFor(automationId).Patterns.Invoke.Pattern.Invoke();
 
     public void TypePassword(string password) => WaitFor("UnlockPassword").Patterns.Value.Pattern.SetValue(password);
+
+    // Every keystroke goes through here: it brings the app window to the front and refuses to go on unless the
+    // foreground window really is the app, so a key can never land in another program.
+    public void EnsureForeground()
+    {
+        var handle = Window.Properties.NativeWindowHandle.Value;
+        Assert.NotEqual(nint.Zero, handle);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (NativeMethods.GetForegroundWindow() != handle)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "The app window is not in the foreground; no key was sent.");
+            Window.SetForeground();
+            NativeMethods.BringToForeground(handle);
+            Thread.Sleep(100);
+        }
+    }
+
+    public void PressKey(VirtualKeyShort key)
+    {
+        EnsureForeground();
+        Keyboard.Type(key);
+        Wait.UntilInputIsProcessed();
+    }
+
+    public void PressChord(params VirtualKeyShort[] keys)
+    {
+        EnsureForeground();
+        Keyboard.TypeSimultaneously(keys);
+        Wait.UntilInputIsProcessed();
+    }
+
+    public AutomationElement? Focused() => _automation!.FocusedElement();
+
+    // A stable label for the focused element: its AutomationId; for a list item, which has none, the list's AutomationId
+    // and the item's name, as in "EntriesList[title]"; for anything else, its control type and name.
+    public static string FocusKey(AutomationElement? element)
+    {
+        if (element is null)
+        {
+            return "(none)";
+        }
+
+        var name = element.Properties.Name.ValueOrDefault ?? string.Empty;
+        if (element.Properties.ControlType.ValueOrDefault == ControlType.ListItem)
+        {
+            return $"{element.Parent?.Properties.AutomationId.ValueOrDefault}[{name}]";
+        }
+
+        var id = element.Properties.AutomationId.ValueOrDefault;
+        return string.IsNullOrEmpty(id) ? $"{element.Properties.ControlType.ValueOrDefault}:{name}" : id;
+    }
+
+    // UI Automation reports the focus of the whole desktop, so the app is brought to the front first (no key is sent).
+    public void WaitFocus(string expected)
+    {
+        EnsureForeground();
+        var actual = Retry.WhileFalse(
+            () => FocusKey(Focused()) == expected, Timeout, TimeSpan.FromMilliseconds(100)).Success
+            ? expected
+            : FocusKey(Focused());
+        Assert.Equal(expected, actual);
+    }
 
     public AutomationElement[] Items(string listId) =>
         WaitFor(listId).FindAllChildren(cf => cf.ByControlType(ControlType.ListItem));

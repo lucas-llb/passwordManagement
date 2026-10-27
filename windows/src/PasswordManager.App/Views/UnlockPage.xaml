@@ -3,7 +3,8 @@
     x:Class="PasswordManager.App.Views.UnlockPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:PasswordManager.App.Views">
+    xmlns:local="using:PasswordManager.App.Views"
+    Loaded="OnLoaded">
 
     <Grid Padding="24">
         <StackPanel
@@ -23,7 +24,8 @@
             <PasswordBox
                 x:Name="PasswordInput"
                 AutomationProperties.AutomationId="UnlockPassword"
-                x:Uid="UnlockPassword" />
+                x:Uid="UnlockPassword"
+                KeyDown="OnPasswordKeyDown" />
 
             <TextBlock
                 AutomationProperties.AutomationId="UnlockWrongPassword"
@@ -44,7 +46,12 @@
                 <Button
                     AutomationProperties.AutomationId="UnlockBack"
                     x:Uid="NavBack"
-                    Command="{x:Bind ViewModel.GoBackCommand}" />
+                    Command="{x:Bind ViewModel.GoBackCommand}"
+                    KeyboardAcceleratorPlacementMode="Hidden">
+                    <Button.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="Escape" />
+                    </Button.KeyboardAccelerators>
+                </Button>
                 <ProgressRing
                     Width="24"
                     Height="24"

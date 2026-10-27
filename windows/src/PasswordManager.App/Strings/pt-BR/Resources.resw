@@ -45,6 +45,12 @@
   <data name="NavBack.Content" xml:space="preserve">
     <value>Voltar</value>
   </data>
+  <data name="ProfilesList.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Lista de perfis</value>
+  </data>
+  <data name="EntriesList.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Lista de entradas</value>
+  </data>
   <data name="EntriesTitle.Text" xml:space="preserve">
     <value>Entradas</value>
   </data>
