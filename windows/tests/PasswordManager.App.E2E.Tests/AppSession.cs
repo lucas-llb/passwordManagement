@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
@@ -34,6 +35,8 @@ internal sealed class AppSession : IDisposable
     public string VaultsDirectory { get; }
 
     public Window Window { get; }
+
+    public nint Handle => Window.Properties.NativeWindowHandle.Value;
 
     public static AppSession Launch(Action<string>? seed = null)
     {
@@ -87,7 +90,7 @@ internal sealed class AppSession : IDisposable
     // foreground window really is the app, so a key can never land in another program.
     public void EnsureForeground()
     {
-        var handle = Window.Properties.NativeWindowHandle.Value;
+        var handle = Handle;
         Assert.NotEqual(nint.Zero, handle);
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
         while (NativeMethods.GetForegroundWindow() != handle)
@@ -97,6 +100,23 @@ internal sealed class AppSession : IDisposable
             NativeMethods.BringToForeground(handle);
             Thread.Sleep(100);
         }
+    }
+
+    // The app window's display affinity (W-14), read from outside the app process.
+    public uint DisplayAffinity()
+    {
+        Assert.True(
+            NativeMethods.GetWindowDisplayAffinity(Handle, out var affinity),
+            $"GetWindowDisplayAffinity failed with error {Marshal.GetLastPInvokeError()}.");
+        return affinity;
+    }
+
+    public void WaitDisplayAffinity(uint expected)
+    {
+        var actual = Retry.WhileFalse(() => DisplayAffinity() == expected, Timeout, TimeSpan.FromMilliseconds(100)).Success
+            ? expected
+            : DisplayAffinity();
+        Assert.True(expected == actual, $"Expected display affinity 0x{expected:X}, got 0x{actual:X}.");
     }
 
     public void PressKey(VirtualKeyShort key)

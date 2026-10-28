@@ -34,6 +34,9 @@ public sealed partial class ProfilesViewModel : PageViewModel
     public partial bool LoadFailed { get; private set; }
 
     /// <inheritdoc />
+    public override bool AllowsScreenCapture => true;
+
+    /// <inheritdoc />
     public override void OnNavigatedTo() => Refresh();
 
     /// <summary>Reads the profile list again.</summary>

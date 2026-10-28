@@ -7,12 +7,20 @@ using System.Runtime.InteropServices;
 namespace PasswordManager.App.E2E.Tests;
 
 // The few Win32 calls the E2E tests need and FlaUI does not offer: the foreground check that guards every keystroke,
-// the sequence that brings the app window to the front, and the settings broadcast of the theme test.
+// the sequence that brings the app window to the front, the settings broadcast of the theme test, and the display
+// affinity, window rect and window move of the capture protection test.
 internal static partial class NativeMethods
 {
     public const nint HWND_BROADCAST = 0xFFFF;
     public const uint WM_SETTINGCHANGE = 0x001A;
     public const uint SMTO_ABORTIFHUNG = 0x2;
+    public const uint WDA_NONE = 0x0;
+    public const uint WDA_EXCLUDEFROMCAPTURE = 0x11;
+    public const uint SWP_NOSIZE = 0x1;
+    public const uint SWP_NOZORDER = 0x4;
+    public const uint SWP_NOACTIVATE = 0x10;
+    public const int SM_XVIRTUALSCREEN = 76;
+    public const int SM_CXVIRTUALSCREEN = 78;
 
     [LibraryImport("user32.dll")]
     public static partial nint GetForegroundWindow();
@@ -39,6 +47,21 @@ internal static partial class NativeMethods
     public static partial nint SendMessageTimeoutW(
         nint hWnd, uint msg, nuint wParam, string lParam, uint flags, uint timeout, out nuint result);
 
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetWindowDisplayAffinity(nint hWnd, out uint affinity);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetWindowRect(nint hWnd, out RECT rect);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetSystemMetrics(int index);
+
     // A plain SetForegroundWindow is refused when the calling process does not own the foreground; attaching this
     // thread's input to the foreground window's thread lifts that restriction for the duration of the call.
     public static void BringToForeground(nint hWnd)
@@ -61,4 +84,14 @@ internal static partial class NativeMethods
             }
         }
     }
+}
+
+// A window rect in screen coordinates; physical pixels, as the test process is PerMonitorV2.
+[StructLayout(LayoutKind.Sequential)]
+internal struct RECT
+{
+    public int Left;
+    public int Top;
+    public int Right;
+    public int Bottom;
 }

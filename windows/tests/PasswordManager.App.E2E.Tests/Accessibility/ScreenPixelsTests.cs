@@ -2,7 +2,7 @@ using System.Drawing;
 
 namespace PasswordManager.App.E2E.Tests.Accessibility;
 
-// The contrast math of the theme E2E test. No window is opened, so these also run in Release.
+// The contrast math of the theme E2E test and the capture comparison of the window protection test. No window is opened, so these also run in Release.
 public sealed class ScreenPixelsTests
 {
     [Fact]
@@ -66,6 +66,50 @@ public sealed class ScreenPixelsTests
         using var bitmap = WhiteWithBlackRow();
 
         Assert.Equal(21.0, ScreenPixels.MaxContrast(bitmap, Color.White), 6);
+    }
+
+    [Fact]
+    public void ChangedFraction_IdenticalBitmaps_IsZero()
+    {
+        using var a = WhiteWithBlackRow();
+        using var b = WhiteWithBlackRow();
+
+        Assert.Equal(0.0, ScreenPixels.ChangedFraction(a, b), 12);
+    }
+
+    [Fact]
+    public void ChangedFraction_TenOfHundredPixelsChanged_IsPointOne()
+    {
+        using var a = WhiteWithBlackRow();
+        using var b = WhiteWithBlackRow();
+        for (var x = 0; x < 10; x++)
+        {
+            b.SetPixel(x, 0, Color.Black);
+        }
+
+        Assert.Equal(0.1, ScreenPixels.ChangedFraction(a, b), 12);
+    }
+
+    [Fact]
+    public void ChangedFraction_ChangeWithinTolerance_IsZero()
+    {
+        using var a = WhiteWithBlackRow();
+        using var b = WhiteWithBlackRow();
+        for (var x = 0; x < 10; x++)
+        {
+            b.SetPixel(x, 0, Color.FromArgb(255, 235, 255));
+        }
+
+        Assert.Equal(0.0, ScreenPixels.ChangedFraction(a, b), 12);
+    }
+
+    [Fact]
+    public void ChangedFraction_DifferentSizes_Throws()
+    {
+        using var a = new Bitmap(10, 10);
+        using var b = new Bitmap(10, 9);
+
+        Assert.Throws<ArgumentException>(() => ScreenPixels.ChangedFraction(a, b));
     }
 
     // 10×10: 90 white pixels and one black row of 10.
