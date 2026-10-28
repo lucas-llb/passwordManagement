@@ -109,9 +109,14 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "CreatePassword");
         AssertNameFromResources(app, "CreateConfirmPassword");
         AssertNameFromResources(app, "CreateNoRecoveryWarning");
+        AssertNameFromResources(app, "CreateSuggest");
         AssertNameFromResources(app, "CreateButton");
         AssertNameFromResources(app, "CreateBack", "NavBack");
         AssertEveryTextFromResourcesOrData(app);
+
+        // The meter text; the box is not empty, so the sweep waits until the attempt below empties it.
+        app.SetValue("CreatePassword", "aaaaaaaaaaaa");
+        app.WaitName("CreateStrength", AppResources.Strings["PasswordStrengthVeryWeak"]);
 
         // An empty name and a short fictitious password; the view empties the boxes after the attempt.
         app.SetValue("CreatePassword", "curta-ficti");
@@ -119,7 +124,35 @@ public sealed class LocalizationE2ETests
         app.Invoke("CreateButton");
         Assert.Equal(AppResources.Strings["ProfileNameEmpty"], app.WaitFor("CreateNameError").Name);
         AssertNameFromResources(app, "CreatePasswordTooShort");
+        app.WaitGone("CreateStrength");
         AssertEveryTextFromResourcesOrData(app);
+
+        // The suggestion fills both boxes, so only its hint is checked, not swept.
+        app.Invoke("CreateSuggest");
+        app.WaitFor("CreateSuggestion");
+        AssertNameFromResources(app, "CreateSuggestionHint");
+    }
+
+    [Fact]
+    public void RecoveryKitPage_TextsComeFromResources()
+    {
+        using var app = AppSession.Launch();
+        app.Invoke("ProfilesCreate");
+        app.WaitFor("CreateName");
+        app.SetValue("CreateName", "Perfil Kit");
+        app.SetValue("CreatePassword", "frase-ficticia-do-kit");
+        app.SetValue("CreateConfirmPassword", "frase-ficticia-do-kit");
+        app.Invoke("CreateButton");
+
+        // Argon2id runs with the default cost here, about a second.
+        var kitText = app.WaitFor("KitText").Name;
+        app.WaitGone("CreateName");
+        AssertNameFromResources(app, "KitTitle");
+        AssertNameFromResources(app, "KitExplanation");
+        AssertNameFromResources(app, "KitInstructions");
+        AssertNameFromResources(app, "KitSavedCheck");
+        AssertNameFromResources(app, "KitDone");
+        AssertEveryTextFromResourcesOrData(app, kitText);
     }
 
     [Fact]

@@ -148,12 +148,48 @@
     <value>As duas senhas não são iguais.</value>
   </data>
   <data name="CreateNoRecoveryWarning.Text" xml:space="preserve">
-    <value>Não há como recuperar a senha mestra pelo app. Se você esquecê-la, as senhas deste perfil ficam inacessíveis.</value>
+    <value>O app não tem como recuperar a senha mestra. Depois de criar o perfil, você verá um Kit de Recuperação uma única vez: sem a senha e sem o kit, as senhas deste perfil ficam inacessíveis.</value>
   </data>
   <data name="CreateFailed.Text" xml:space="preserve">
     <value>Não foi possível criar o perfil.</value>
   </data>
   <data name="CreateButton.Content" xml:space="preserve">
     <value>Criar perfil</value>
+  </data>
+  <data name="PasswordStrengthVeryWeak" xml:space="preserve">
+    <value>Força da senha: muito fraca</value>
+  </data>
+  <data name="PasswordStrengthWeak" xml:space="preserve">
+    <value>Força da senha: fraca</value>
+  </data>
+  <data name="PasswordStrengthFair" xml:space="preserve">
+    <value>Força da senha: razoável</value>
+  </data>
+  <data name="PasswordStrengthStrong" xml:space="preserve">
+    <value>Força da senha: forte</value>
+  </data>
+  <data name="PasswordStrengthVeryStrong" xml:space="preserve">
+    <value>Força da senha: muito forte</value>
+  </data>
+  <data name="CreateSuggest.Content" xml:space="preserve">
+    <value>Sugerir frase-senha</value>
+  </data>
+  <data name="CreateSuggestionHint.Text" xml:space="preserve">
+    <value>Frase-senha sugerida, já colocada nos dois campos. Memorize-a ou anote-a em um lugar seguro:</value>
+  </data>
+  <data name="KitTitle.Text" xml:space="preserve">
+    <value>Kit de Recuperação</value>
+  </data>
+  <data name="KitExplanation.Text" xml:space="preserve">
+    <value>Este kit é a única forma de abrir este perfil se você esquecer a senha mestra. O app não tem como recuperar a senha.</value>
+  </data>
+  <data name="KitInstructions.Text" xml:space="preserve">
+    <value>Anote o kit em papel e guarde-o em um lugar seguro, longe do computador. Ele não será mostrado de novo.</value>
+  </data>
+  <data name="KitSavedCheck.Content" xml:space="preserve">
+    <value>Anotei o Kit de Recuperação e entendo que, sem a senha mestra e sem o kit, as senhas deste perfil não podem ser recuperadas.</value>
+  </data>
+  <data name="KitDone.Content" xml:space="preserve">
+    <value>Concluir</value>
   </data>
 </root>

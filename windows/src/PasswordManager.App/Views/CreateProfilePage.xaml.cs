@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
+using PasswordManager.Core.Passwords;
 using PasswordManager.ViewModels;
 using Windows.System;
 
@@ -31,7 +32,33 @@ public sealed partial class CreateProfilePage : Page
 
     public static bool IsNot(bool value) => !value;
 
+    // The strength bar: one step per level, error colors for the weak levels and paused colors for a fair one, all from
+    // the theme.
+    public static double StrengthValue(PasswordStrengthLevel level) => (int)level;
+
+    public static bool IsWeak(PasswordStrengthLevel level) =>
+        level is PasswordStrengthLevel.VeryWeak or PasswordStrengthLevel.Weak;
+
+    public static bool IsFair(PasswordStrengthLevel level) => level == PasswordStrengthLevel.Fair;
+
+    public static Visibility HasText(string? text) =>
+        string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+
     private void OnLoaded(object sender, RoutedEventArgs e) => NameInput.Focus(FocusState.Programmatic);
+
+    // The PasswordBox only offers a string; the view model reads it and keeps nothing of it.
+    private void OnPasswordChanged(object sender, RoutedEventArgs e) => ViewModel.UpdateStrength(PasswordInput.Password);
+
+    // The phrase goes in both boxes, so the user can create right away; focus stays on the button.
+    private void OnSuggestClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SuggestPassphraseCommand.Execute(null);
+        if (ViewModel.Suggestion is { } phrase)
+        {
+            PasswordInput.Password = phrase;
+            ConfirmInput.Password = phrase;
+        }
+    }
 
     private async void OnCreateClick(object sender, RoutedEventArgs e) => await CreateAsync();
 

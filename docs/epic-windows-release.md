@@ -48,7 +48,7 @@ Estas mudam o formato ou a distribuição; decidir antes das fases que dependem 
 | D1 | Kit de Recuperação entra na 1.0? Se sim, onde fica o segundo envelope da Vault Key | congelamento do formato (F1) | **Decidido (W-01):** Kit na 1.0 = slot tipo 2 da tabela de slots; senha = slot tipo 1; biometria/Windows Hello ficam em arquivo local separado (AGENTS §4.1), fora do cabeçalho. Ver vault-format.md. |
 | D2 | Canal de distribuição: Microsoft Store, MSIX assinado no GitHub Releases, winget | F6 | Store (assinatura e atualização feitas pela loja) + MSIX no GitHub Releases para quem não usa a loja. A loja não exige `internetClient` no app. |
 | D3 | Certificado de assinatura para o MSIX fora da loja | F6 | Certificado de code signing (OV ou Azure Trusted Signing). Chave **fora do repositório**. |
-| D4 | Medidor de força da senha | F3 | Port de zxcvbn em .NET é dependência nova (seção 7 do AGENTS.md): avaliar tamanho, manutenção e licença. Alternativa: estimador de entropia simples no `Core`, sem dependência. |
+| D4 | Medidor de força da senha | F3 | **Decidido (W-16):** estimador próprio no `Core` (`PasswordStrength`), sem dependência nova; port de zxcvbn descartado (pacote novo, dicionários grandes). Menor custo em bits entre força bruta, palavras (lista EFF curta + lista própria de senhas comuns), repetições, sequências e anos. Medidor só informativo; a regra que bloqueia continua sendo ≥ 12 caracteres. |
 | D5 | Trimming do app WinUI | F6 | Manter `PublishTrimmed` só se o app passar no teste manual completo trimado; senão desligar no App e manter `IsTrimmable` no Core. |
 | D6 | Versão mínima do Windows | F6 | Manter `10.0.19041` (Windows 10 2004). Confirmar que `WDA_EXCLUDEFROMCAPTURE` (2004+) e as APIs de clipboard funcionam nela. |
 
@@ -166,4 +166,4 @@ D2, D3, D5, D6 ──► F6 ─────────────────�
 | Trimming quebrar WinUI/reflexão | crash só no build de release | D5; testar sempre o pacote de release, não só o Debug. |
 | Argon2id lento em máquinas fracas | desbloqueio travando a UI | Rodar fora da thread de UI; medir; parâmetros já ficam no cabeçalho para ajuste futuro. |
 | Custo/burocracia de assinatura e Store | atraso na publicação | Iniciar D2/D3 cedo, em paralelo com F1. |
-| Dependência nova para medidor de força | aumento de superfície | D4: avaliar antes; preferir solução sem dependência se a qualidade for aceitável. |
+| Dependência nova para medidor de força | aumento de superfície | D4 decidido sem dependência (W-16). |

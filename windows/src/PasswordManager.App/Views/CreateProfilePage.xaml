@@ -32,12 +32,46 @@
                 <PasswordBox
                     x:Name="PasswordInput"
                     AutomationProperties.AutomationId="CreatePassword"
-                    x:Uid="CreatePassword" />
+                    x:Uid="CreatePassword"
+                    PasswordChanged="OnPasswordChanged" />
                 <PasswordBox
                     x:Name="ConfirmInput"
                     AutomationProperties.AutomationId="CreateConfirmPassword"
                     x:Uid="CreateConfirmPassword"
                     KeyDown="OnConfirmKeyDown" />
+
+                <!--  Advisory only: the hard rule stays the 12-character minimum. The bar takes its colors from the theme.  -->
+                <TextBlock
+                    x:Name="StrengthText"
+                    AutomationProperties.AutomationId="CreateStrength"
+                    Text="{x:Bind local:PasswordStrengthMessages.Text(ViewModel.Strength), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:PasswordStrengthMessages.Visible(ViewModel.Strength), Mode=OneWay}" />
+                <ProgressBar
+                    AutomationProperties.AutomationId="CreateStrengthBar"
+                    AutomationProperties.LabeledBy="{x:Bind StrengthText}"
+                    Maximum="5"
+                    ShowError="{x:Bind local:CreateProfilePage.IsWeak(ViewModel.Strength), Mode=OneWay}"
+                    ShowPaused="{x:Bind local:CreateProfilePage.IsFair(ViewModel.Strength), Mode=OneWay}"
+                    Value="{x:Bind local:CreateProfilePage.StrengthValue(ViewModel.Strength), Mode=OneWay}"
+                    Visibility="{x:Bind local:PasswordStrengthMessages.Visible(ViewModel.Strength), Mode=OneWay}" />
+
+                <Button
+                    AutomationProperties.AutomationId="CreateSuggest"
+                    x:Uid="CreateSuggest"
+                    Click="OnSuggestClick"
+                    IsEnabled="{x:Bind local:CreateProfilePage.IsNot(ViewModel.CreateCommand.IsRunning), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="CreateSuggestionHint"
+                    x:Uid="CreateSuggestionHint"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CreateProfilePage.HasText(ViewModel.Suggestion), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="CreateSuggestion"
+                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    Text="{x:Bind ViewModel.Suggestion, Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CreateProfilePage.HasText(ViewModel.Suggestion), Mode=OneWay}" />
 
                 <TextBlock
                     AutomationProperties.AutomationId="CreatePasswordTooShort"

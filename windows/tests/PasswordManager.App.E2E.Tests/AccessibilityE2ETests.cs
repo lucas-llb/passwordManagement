@@ -50,7 +50,7 @@ public sealed class AccessibilityE2ETests
         app.WaitFor("CreateName");
         app.WaitFocus("CreateName");
         AssertEveryFocusableElementIsNamed(app);
-        foreach (var expected in new[] { "CreatePassword", "CreateConfirmPassword", "CreateButton", "CreateBack", "CreateName" })
+        foreach (var expected in new[] { "CreatePassword", "CreateConfirmPassword", "CreateSuggest", "CreateButton", "CreateBack", "CreateName" })
         {
             app.PressKey(VirtualKeyShort.TAB);
             app.WaitFocus(expected);
@@ -72,8 +72,25 @@ public sealed class AccessibilityE2ETests
         app.WaitFocus("CreateConfirmPassword");
         app.PressKey(VirtualKeyShort.RETURN);
 
-        app.WaitFor("ProfilesList");
+        // The kit page starts on its checkbox; it has no way back, so Escape does nothing there.
+        app.WaitFor("KitText");
         app.WaitGone("CreateName");
+        app.WaitFocus("KitSavedCheck");
+        AssertEveryFocusableElementIsNamed(app);
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        Assert.NotNull(app.Find("KitText"));
+        Assert.Null(app.Find("ProfilesList"));
+        app.WaitFocus("KitSavedCheck");
+
+        // Space checks the box, which enables Concluir; Enter on it returns to the profile list.
+        app.PressKey(VirtualKeyShort.SPACE);
+        app.WaitEnabled("KitDone");
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("KitDone");
+        app.PressKey(VirtualKeyShort.RETURN);
+
+        app.WaitFor("ProfilesList");
+        app.WaitGone("KitText");
         app.WaitItems("ProfilesList", 1);
         app.WaitFocus("ProfilesList[Perfil Teclado]");
     }

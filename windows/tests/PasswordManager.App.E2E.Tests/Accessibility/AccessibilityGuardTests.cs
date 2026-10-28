@@ -73,6 +73,7 @@ public sealed class AccessibilityGuardTests
                   </ListView.ItemTemplate>
                 </ListView>
                 <ProgressRing />
+                <ProgressBar />
                 <ContentDialog x:Uid="Confirm" />
               </Grid>
             </Page>
@@ -139,7 +140,7 @@ public sealed class AccessibilityGuardTests
     [Fact]
     public void FindUnnamedControls_PassiveElementsWithoutNames_AreAccepted()
     {
-        var violations = AccessibilityGuard.FindUnnamedControls(Page("<Grid><TextBlock /><StackPanel /><ProgressRing /></Grid>"), Strings(""));
+        var violations = AccessibilityGuard.FindUnnamedControls(Page("<Grid><TextBlock /><StackPanel /><ProgressRing /><ProgressBar /></Grid>"), Strings(""));
 
         Assert.Empty(violations);
     }

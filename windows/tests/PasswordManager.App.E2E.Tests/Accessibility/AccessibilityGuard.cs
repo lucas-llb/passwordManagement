@@ -47,13 +47,14 @@ internal static partial class AccessibilityGuard
     };
 
     // Layout, text, resources and plumbing: nothing the user can focus or activate.
+    // ProgressBar is not focusable; its meaning is in the CreateStrength text, which labels it.
     // ContentDialog is a container: its buttons are template parts named by PrimaryButtonText / CloseButtonText from the resw (checked by the
     // W-12 localization guard), its content is checked like any other markup, and the E2E keyboard test checks the open dialog.
     private static readonly HashSet<string> Passive = new(StringComparer.Ordinal)
     {
         "Application", "ResourceDictionary", "XamlControlsResources", "Window", "MicaBackdrop", "Frame", "Page", "Grid",
         "RowDefinition", "ColumnDefinition", "StackPanel", "ScrollViewer", "Border", "TextBlock", "Run", "FontIcon",
-        "SymbolIcon", "DataTemplate", "ProgressRing", "KeyboardAccelerator", "Style", "Setter", "ContentDialog",
+        "SymbolIcon", "DataTemplate", "ProgressRing", "ProgressBar", "KeyboardAccelerator", "Style", "Setter", "ContentDialog",
     };
 
     // Elements that put a color of their own in the markup.

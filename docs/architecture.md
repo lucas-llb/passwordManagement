@@ -1,6 +1,6 @@
 # Arquitetura do sistema
 
-> Retrato do código em out/2026, depois da W-15 (com testes E2E; fases F1 e F2 do [épico Windows](epic-windows-release.md) concluídas, a F2 com a W-11, a W-12, a W-13 e a W-14; a F3 começou com a W-15).
+> Retrato do código em 28/10/2026, depois da W-16 (com testes E2E; fases F1 e F2 do [épico Windows](epic-windows-release.md) concluídas, a F2 com a W-11, a W-12, a W-13 e a W-14; a F3 está em andamento: W-15 e W-16 prontas).
 > Deve ser atualizado no mesmo PR de toda mudança relevante (AGENTS.md §9).
 > Regras obrigatórias: [AGENTS.md](../AGENTS.md). Layout de bytes: [vault-format.md](vault-format.md). Ameaças: [threat-model.md](threat-model.md).
 > Este documento descreve **como o código está organizado**; quando houver conflito, AGENTS.md e vault-format.md prevalecem.
@@ -40,9 +40,9 @@ Princípios que moldam a arquitetura (AGENTS §1): segurança, offline de verdad
 | Parte | Estado |
 |---|---|
 | Formato v1 (`vault-format.md`) | Layout fechado (W-01). Congela quando o `core` Android passar nos vetores. |
-| `PasswordManager.Core` (Windows) | **Completo para a F1**: KDF, wrap, corpo, arquivo, perfis, troca de senha, Kit de Recuperação, `VaultSession` e vetores (W-02…W-10). |
-| `PasswordManager.App` (WinUI 3) | Telas de perfis, desbloqueio, lista e detalhe ligadas por um `Frame` (W-11), com o fluxo coberto por testes E2E (FlaUI, só Debug). Todo texto da tela vem de `Strings/pt-BR/Resources.resw`, com testes que impedem texto literal (W-12, §9.4). Segue o tema do sistema (inclusive ao vivo e na barra de título), tem nomes acessíveis, funciona só com o teclado e tem contraste AA nos dois temas, tudo coberto por testes (W-13, §9.5). Com o cofre aberto (lista e detalhe), a janela fica fora das capturas de tela (`WDA_EXCLUDEFROMCAPTURE`), também coberto por testes (W-14, §9.6). Seleção de perfis com criação mínima (nome, senha mestra com confirmação e aviso de que não há recuperação), renomear e excluir com confirmação, tudo coberto por testes E2E (W-15, §5.6, §9.3 e §9.5). Ainda sem medidor de força, sugestão de frase-senha nem exibição do Kit de Recuperação (W-16), e sem edição de entradas, busca nem campo de senha das entradas. Sem pacote MSIX (`WindowsPackageType=None`). |
-| `PasswordManager.ViewModels` (`net10.0`, sem WinUI) | Navegação (`NavigationService`, pilha pura) e cinco ViewModels de página (Perfis, Criação de perfil, Desbloqueio, Lista e Detalhe), testados sem janela (W-11; a criação de perfil veio na W-15). `PageViewModel.AllowsScreenCapture` diz se a janela pode ser capturada com aquela página (W-14, §9.6). |
+| `PasswordManager.Core` (Windows) | **Completo para a F1**: KDF, wrap, corpo, arquivo, perfis, troca de senha, Kit de Recuperação, `VaultSession` e vetores (W-02…W-10). Mais `Passwords/` (W-16): estimador de força, gerador de frase-senha e a lista de palavras embutida, fora da pilha do cofre (§4.2). |
+| `PasswordManager.App` (WinUI 3) | Telas de perfis, desbloqueio, lista e detalhe ligadas por um `Frame` (W-11), com o fluxo coberto por testes E2E (FlaUI, só Debug). Todo texto da tela vem de `Strings/pt-BR/Resources.resw`, com testes que impedem texto literal (W-12, §9.4). Segue o tema do sistema (inclusive ao vivo e na barra de título), tem nomes acessíveis, funciona só com o teclado e tem contraste AA nos dois temas, tudo coberto por testes (W-13, §9.5). Com o cofre aberto (lista e detalhe), a janela fica fora das capturas de tela (`WDA_EXCLUDEFROMCAPTURE`), também coberto por testes (W-14, §9.6). Seleção de perfis com criação (nome, senha mestra com confirmação), renomear e excluir com confirmação, tudo coberto por testes E2E (W-15, §5.6, §9.3 e §9.5). A criação tem medidor de força só informativo, botão de sugestão de frase-senha e o aviso de que o app não recupera a senha; depois de criar, uma página protegida mostra o Kit de Recuperação uma única vez e só sai por "Concluir", depois de marcar que o kit foi anotado (W-16, §5.1 e §9.2), também coberta por testes E2E. Ainda sem edição de entradas, busca nem campo de senha das entradas. Sem pacote MSIX (`WindowsPackageType=None`). |
+| `PasswordManager.ViewModels` (`net10.0`, sem WinUI) | Navegação (`NavigationService`, pilha pura) e seis ViewModels de página (Perfis, Criação de perfil, Kit de Recuperação, Desbloqueio, Lista e Detalhe), testados sem janela (W-11; a criação de perfil veio na W-15 e o Kit de Recuperação na W-16). `PageViewModel.AllowsScreenCapture` diz se a janela pode ser capturada com aquela página (W-14, §9.6). |
 | `:core` (Android) | Parcial: KDF, wrap, corpo, cabeçalho, slots e arquivo. Faltam Kit de Recuperação, troca de senha, sessão, perfis e o teste dos vetores. |
 | `:app` (Android) | Esqueleto: tela vazia de perfis, `FLAG_SECURE`, sem `INTERNET`, sem backup. |
 | `spec/test-vectors/` | 4 vetores (`empty`, `entries-unicode`, `recovery-kit`, `export`) abertos pelo Core Windows. |
@@ -51,13 +51,14 @@ Princípios que moldam a arquitetura (AGENTS §1): segurança, offline de verdad
 
 ```
 AGENTS.md                         regras para pessoas e agentes (CLAUDE.md só importa este arquivo)
+THIRD-PARTY-NOTICES.md            avisos de terceiros (lista de palavras EFF, CC BY; §12)
 docs/                             formato, ameaças, épico, este documento
 spec/test-vectors/                vetores compartilhados (<nome>.pmvault + <nome>.json)
 windows/
   global.json                     SDK .NET 10 + runner Microsoft.Testing.Platform (rodar dotnet a partir de windows/)
   Directory.Build.props           Nullable, warnings como erro, analisadores, lockfiles
   Directory.Packages.props        versões NuGet centralizadas
-  src/PasswordManager.Core/       Crypto/, Vault/, Storage/, Profiles/
+  src/PasswordManager.Core/       Crypto/, Vault/, Storage/, Profiles/, Passwords/
   src/PasswordManager.App/        WinUI 3: Views/, App.xaml.cs (composição), NativeMethods.cs (a única chamada Win32, §9.6), textos em Strings/pt-BR/Resources.resw
   src/PasswordManager.ViewModels/ net10.0 sem WinUI: Navigation/ e os ViewModels de página
   tests/PasswordManager.Core.Tests/   xUnit v3, espelha as pastas do Core + TestVectors/
@@ -112,6 +113,8 @@ flowchart TB
     KDF & WRAP & BC --> NSEC
 ```
 
+A pasta `Passwords/` (W-16: `PasswordStrength`, `Passphrase` e `Wordlist`) **não está nesse diagrama**: não usa o formato nem a cripto do cofre e não toca no disco. Ela só serve aos ViewModels da criação de perfil, que medem a senha digitada e sugerem uma frase-senha (§5.1). A única dependência dela é o `RandomNumberGenerator` do .NET.
+
 ### 4.2 Responsabilidades
 
 | Pasta | Tipo | Visibilidade | Papel |
@@ -133,8 +136,23 @@ flowchart TB
 | | `VaultFormatException`, `VaultAuthenticationException` | pública | Erros tipados (ver 8). |
 | `Profiles/` | `ProfileRepository` | pública | `profiles.json`: listar, validar nome, criar (grava o cofre e depois a lista), renomear, apagar (lista primeiro, depois `.pmvault`/`.bak`/`.tmp`). |
 | | `Profile`, `ProfileNameError`, `ProfileStoreException` | pública | Modelo, erros de validação do nome, erro de armazenamento. |
+| `Passwords/` | `PasswordStrength`, `PasswordStrengthLevel` | pública | Estimador de força sem dependência (decisão D4 do épico): `EstimateBits` e `Evaluate` (ver abaixo). Só informativo. |
+| | `Passphrase` | pública | `Generate(n)` devolve uma frase-senha em `char[]` (6 palavras da lista EFF curta, minúsculas, separadas por `-`; de 4 a 12 palavras aceitas) e `EntropyBits(n)`. Cada índice vem de `RandomNumberGenerator.GetInt32(1296)`, sem viés de módulo. A frase nunca é uma `string` aqui, e quem chama zera o array. Seis palavras dão cerca de 62 bits e no mínimo 23 caracteres, então a frase sempre passa do mínimo de 12. |
+| | `Wordlist` | interna | A EFF Short Wordlist #1, com 1.296 palavras únicas, **embutida como recurso** (`PasswordManager.Core.Passwords.eff_short_wordlist_1.txt`): não há arquivo dela em disco em tempo de execução. Carrega uma vez e falha alto se o recurso não tiver exatamente 1.296 palavras únicas. `Contains(ReadOnlySpan<char>)` consulta sem alocar. Ver §12. |
 
 As APIs de baixo nível trabalham com **bytes do arquivo inteiro** (`ReadOnlySpan<byte> file` → `byte[]` novo). Elas não tocam no disco; só `VaultFile` e `ProfileRepository` fazem I/O. Isso torna cada operação testável em memória e deixa a escrita atômica num único lugar.
+
+**Estimador de força** (`PasswordStrength`, W-16). O D4 do épico foi decidido sem dependência: um port de zxcvbn seria um pacote novo (AGENTS §7) e traria dicionários grandes.
+
+- **Ideia**: o custo da senha é o menor número de bits para descrevê-la como uma sequência de pedaços, achado por programação dinâmica. Um pedaço pode ser:
+  - um caractere por força bruta, a `log2` do tamanho do conjunto de classes presentes na senha inteira (minúsculas 26, maiúsculas 26, dígitos 10, símbolos ASCII e espaço 33, qualquer não ASCII 100); um par substituto conta como um caractere;
+  - uma palavra de 3 letras ou mais, da lista EFF (palavras de 3 a 5 letras, `log2(1296)` bits) ou da lista própria de senhas comuns (60 palavras em pt-BR e inglês, `static readonly` no arquivo, `log2(60)` bits), casada sobre uma cópia em minúsculas com as trocas de leet (`@`/`4`→a, `3`→e, `1`/`!`→i, `0`→o, `$`/`5`→s, `7`→t); +1 bit se tem maiúscula e +1 se usou leet;
+  - um bloco de 1 a 4 caracteres repetido (`blocos*c + log2(vezes)`);
+  - uma sequência de 3 ou mais caracteres, seguindo o alfabeto ou os dígitos (passo +1 ou −1) ou uma fileira de teclado (`qwertyuiop`, `asdfghjkl`, `zxcvbnm`, `1234567890`) nos dois sentidos (`c + log2(tamanho) + 1`);
+  - um ano `19dd` ou `20dd`, casado na cópia em minúsculas (`log2(200)`).
+- **Faixas** (decisão de produto): menos de 30 bits é muito fraca, até 45 fraca, até 60 razoável, até 80 forte, e 80 ou mais muito forte.
+- **Segredo**: a senha nunca vira `string`. Só os primeiros 128 caracteres são analisados, em duas cópias em `stackalloc` (minúsculas, e minúsculas com leet) que são limpas num `finally`; cada caractere além disso soma só o custo de força bruta. Um par substituto nunca é partido nessa fronteira. Nunca lança exceção por causa da entrada, e nada é logado.
+- **Limite**: é uma heurística pequena, não um zxcvbn. Não conhece nomes, datas fora do formato de ano, nem dicionários grandes. Por isso é só informativa: a única regra que bloqueia continua sendo o mínimo de 12 caracteres.
 
 ### 4.3 `VaultSession`: estado e ciclo de vida
 
@@ -171,16 +189,25 @@ sequenceDiagram
     UI->>PR: Create(nome, bytes)
     Note over PR: grava <id>.pmvault, depois profiles.json<br/>(se a lista falhar, remove o cofre)
     PR-->>UI: Profile
-    Note over UI: mostra o kit uma vez e zera o buffer (W-16; até lá, só zera)
+    Note over UI: entrega o kit à página do Kit (RecoveryKitViewModel),<br/>que o mostra uma vez e o zera ao sair (W-16)
 ```
 
-Na tela de criação (`CreateProfileViewModel`, W-15), a parte da UI faz o seguinte:
+Na tela de criação (`CreateProfileViewModel`, W-15 e W-16), a parte da UI faz o seguinte:
 
 - Valida antes de qualquer Argon2id: o nome pelas mesmas regras do `ProfileRepository.ValidateDisplayName`; a senha com pelo menos 12 caracteres (contados como escalares Unicode) e a confirmação igual à senha. O mínimo é `CreateProfileViewModel.MinimumPasswordLength`.
 - Roda `VaultSession.Create` e `ProfileRepository.Create` em `Task.Run`, com `KdfParameters.Default`. O `await` **não usa `ConfigureAwait(false)`**, para a navegação voltar à thread de UI.
-- O texto do kit vai para um buffer que é zerado sem ser mostrado. Só a W-16 exibe o kit, uma vez, numa página protegida.
+- O texto do kit vai para um buffer. Se o perfil é criado, o buffer **passa para o `RecoveryKitViewModel`** (a `CreateAsync` não o zera nesse caso) e a navegação vai para a página do Kit; em qualquer falha, o `finally` o zera sem mostrá-lo.
 - Os dois `char[]` da senha entram no comando (`NewMasterPassword`), que os zera no `finally`, mesmo em falha.
 - Com a lista corrompida (`LoadFailed`), o botão de criar fica desabilitado, porque `Create` e `ValidateDisplayName` lançariam exceção.
+
+**Medidor, sugestão e Kit (W-16)**
+
+- **Medidor de força, só informativo.** A cada `PasswordChanged` do campo de senha, a página chama `UpdateStrength`, que grava `Strength` (`PasswordStrength.Evaluate`, faixas em §4.2). O texto "Força da senha: …" e uma barra (`ProgressBar`) seguem esse nível; os dois ficam ocultos com o campo vazio. **Nada é bloqueado pelo medidor**: uma senha fraca de 12 caracteres ou mais é aceita, e a única regra que impede a criação continua sendo o mínimo de 12 (cobre os testes `Create_WeakButTwelveRunes_IsAccepted` e `CreateProfile_StrengthMeter_FollowsPasswordAndDoesNotBlock`).
+- **Sugestão de frase-senha.** O botão "Sugerir frase-senha" executa `SuggestPassphraseCommand`: `Passphrase.Generate()` vira `Suggestion` (uma `string`) e o `char[]` é zerado no `finally`. A página põe a frase **nos dois campos de senha** e a mostra em um texto abaixo, sem seleção (não dá para copiá-la), com a dica para memorizar ou anotar. Com a frase nos campos, o usuário só digita o nome e cria. O comando fica indisponível enquanto uma criação roda, como o Voltar, para a frase não mudar debaixo da senha em uso.
+- **Quando a sugestão some.** `UpdateStrength` apaga `Suggestion` quando o texto digitado não é vazio e difere dela (o usuário escreveu outra coisa). Campo vazio ou texto igual a mantém, porque a página esvazia os campos depois de cada tentativa de criar e a frase mostrada continua sendo a mesma. `OnNavigatedFrom` apaga `Suggestion` e volta `Strength` para `None`.
+- **Aviso de que não há recuperação.** O texto estático da página de criação diz que o app não recupera a senha mestra e que um Kit de Recuperação será mostrado uma única vez; sem a senha e sem o kit, o perfil fica inacessível (AGENTS §3.4).
+- **Página do Kit.** Com o perfil criado, `NavigateTo(new RecoveryKitViewModel(kit, repo, nav))` substitui o antigo `GoBack`. A página mostra o título, a explicação, o texto do kit (Crockford base32, 8 grupos de 4), as instruções e a caixa "Anotei o Kit de Recuperação e entendo que, sem a senha mestra e sem o kit, as senhas deste perfil não podem ser recuperadas." (esse é o reconhecimento explícito de que não há recuperação). **Concluir** só fica habilitado com a caixa marcada (`KitSaved` → `DoneCommand.CanExecute`, e o comando ignora uma chamada direta sem a caixa). Concluir faz `ResetTo(new ProfilesViewModel(repo, nav))`, então a lista de perfis volta atualizada e **sem nada para voltar**. A página **não tem Voltar nem Escape**. O `RecoveryKitViewModel` assume o `char[]` do kit e o zera com `Array.Clear` em `OnNavigatedFrom`; depois disso, `KitText` fica vazio. Não há botão de imprimir nem de copiar: copiar exigiria as regras de área de transferência da W-22.
+- Com o kit em tela, a janela fica excluída da captura (§9.6), e o texto do kit só existe na tela até sair da página.
 
 ### 5.2 Desbloquear, editar, bloquear
 
@@ -235,6 +262,7 @@ Regras que o código segue:
 - **Nenhum hash da senha é guardado**: a verificação é a própria tag AEAD do slot.
 - Senhas e textos de kit entram como `ReadOnlySpan<char>`; chaves como `Span<byte>`. Temporários ficam em `stackalloc` e são zerados em `finally`. Os buffers do chamador nunca são alterados, e é ele quem os zera.
 - O `VaultContent` e suas `string` são objetos gerenciados e **não podem ser zerados**; `Lock` só solta as referências (limite aceito em AGENTS §3.5).
+- **A UI precisa de `string` para mostrar a frase sugerida e o kit** (W-16): a frase vai para um `TextBlock` e para os dois `PasswordBox`, e o texto do kit para um `TextBlock`. O `Core` devolve `char[]` (`Passphrase.Generate`) e os ViewModels zeram os arrays que possuem, mas as `string` ficam no heap até o GC. É o mesmo limite do `PasswordBox` (§13), e a página do Kit esvazia o `TextBlock` ao sair. O medidor lê o texto do campo a cada tecla, o que cria outra `string` gerenciada por tecla. Nada disso vai para log nem para exceção.
 - Exceções nunca carregam segredo nem conteúdo do arquivo.
 
 ## 7. Armazenamento em disco
@@ -271,17 +299,17 @@ Cada camada só usa a de baixo. As Views não chamam o Core: falam só com os Vi
 flowchart TB
     subgraph Views["Views (PasswordManager.App, WinUI 3)"]
         MW["MainWindow<br/>Frame sem pilha própria"]
-        PG["ProfilesPage · CreateProfilePage · UnlockPage<br/>EntryListPage · EntryDetailPage"]
+        PG["ProfilesPage · CreateProfilePage · RecoveryKitPage<br/>UnlockPage · EntryListPage · EntryDetailPage"]
     end
     subgraph VMs["ViewModels (PasswordManager.ViewModels, net10.0)"]
         NS["NavigationService<br/>dona da pilha"]
-        VM["ProfilesViewModel · CreateProfileViewModel<br/>UnlockViewModel · EntryListViewModel · EntryDetailViewModel"]
+        VM["ProfilesViewModel · CreateProfileViewModel · RecoveryKitViewModel<br/>UnlockViewModel · EntryListViewModel · EntryDetailViewModel"]
     end
-    CORE["PasswordManager.Core<br/>VaultSession · ProfileRepository"]
+    CORE["PasswordManager.Core<br/>VaultSession · ProfileRepository<br/>PasswordStrength · Passphrase"]
     Views --> VMs --> CORE
 ```
 
-- **Views**: só XAML e `x:Bind` para os ViewModels. A `MainWindow` escuta `NavigationService.Navigated` e chama `Frame.Navigate` com a página do tipo de `Current`; cada caso tem um `typeof` literal, para o trimmer enxergar os tipos. No mesmo handler, a `MainWindow` aplica a afinidade de exibição da página atual, que decide se a janela pode ser capturada (§9.6).
+- **Views**: só XAML e `x:Bind` para os ViewModels. Do `Core` elas só conhecem tipos de dado, para mostrar (como `Profile`, `VaultEntry`, `ProfileNameError` e, desde a W-16, o enum `PasswordStrengthLevel`, que escolhe o texto e o valor da barra de força); nenhuma View chama a cripto. A `MainWindow` escuta `NavigationService.Navigated` e chama `Frame.Navigate` com a página do tipo de `Current`; cada caso tem um `typeof` literal, para o trimmer enxergar os tipos. No mesmo handler, a `MainWindow` aplica a afinidade de exibição da página atual, que decide se a janela pode ser capturada (§9.6).
 - **ViewModels**: `ObservableObject` e `RelayCommand` do CommunityToolkit.Mvvm; nenhum tipo de UI. Expõem estado (`UnlockError`, `IsEmpty`, `LoadFailed`), e a View escolhe o texto no `.resw`.
 - **Composição**: `App.OnLaunched` cria o `NavigationService` e o `ProfileRepository`, entrega o serviço à `MainWindow` e mostra a tela de perfis. Não há container de DI. O diretório de cofres vem de `ResolveVaultsDirectory`: no Debug, `--vaults-dir <caminho absoluto>` substitui `ProfileRepository.GetDefaultDirectory()` (usado pelos testes E2E); um valor inválido aborta a inicialização. No Release esse código não é compilado.
 
@@ -291,8 +319,11 @@ flowchart TB
 stateDiagram-v2
     [*] --> Perfis
     state "Criação de perfil" as Criacao
+    state "Kit de Recuperação" as Kit
     Perfis --> Criacao: Novo perfil
-    Criacao --> Perfis: Voltar ou perfil criado
+    Criacao --> Perfis: Voltar
+    Criacao --> Kit: perfil criado
+    Kit --> Perfis: Concluir (ResetTo)
     Perfis --> Desbloqueio: abrir perfil
     Desbloqueio --> Perfis: Voltar
     Desbloqueio --> Lista: senha certa (ResetTo)
@@ -303,7 +334,8 @@ stateDiagram-v2
 
 - **A pilha fica no `NavigationService`**. O `Frame` tem `IsNavigationStackEnabled="False"`, e a View não guarda histórico próprio.
 - **Desbloquear troca a pilha inteira** pela Lista (`ResetTo`). Com o cofre aberto, nenhum Voltar leva ao desbloqueio.
-- **Criar perfil** empurra a página de criação na pilha. Ela só sai por Voltar (Escape também) ou depois de criar com sucesso. O comando de Voltar fica desabilitado enquanto a criação roda, então a página não pode ser deixada no meio do Argon2id.
+- **Criar perfil** empurra a página de criação na pilha. Ela só sai por Voltar (Escape também) ou, depois de criar com sucesso, indo para o Kit de Recuperação. O comando de Voltar fica desabilitado enquanto a criação roda, então a página não pode ser deixada no meio do Argon2id.
+- **Kit de Recuperação** (W-16): a criação bem-sucedida empurra a página do Kit (`NavigateTo`), então a pilha fica `[Perfis, Criação, Kit]`. A página **não tem Voltar nem Escape**; só **Concluir** a deixa, e só depois de marcar que o kit foi anotado. Concluir troca a pilha inteira por `[Perfis]` (`ResetTo`, o mesmo padrão do Bloquear), com a lista relida e sem a página de criação para voltar. A pilha é segura só porque nada oferece Voltar no Kit: um gesto global de voltar, se um dia existir, tem que ignorar essa página. Se o app for fechado nela, o perfil já existe mas o kit nunca foi visto (§13).
 - **Bloquear** (`EntryListViewModel.Lock`) fecha a sessão, esvazia as entradas e refaz a pilha como `[Perfis]` com `Desbloqueio` atual. Voltar cai em Perfis, nunca na lista.
 - Cada troca chama `OnNavigatedFrom` da página que sai e `OnNavigatedTo` da que entra, antes de `Navigated`, sempre na thread que chamou (a de UI).
 - **Desbloqueio fora da thread de UI**: `UnlockViewModel` roda `VaultSession.Unlock` em `Task.Run`. O `await` **não usa `ConfigureAwait(false)`**: a navegação depois dele precisa voltar à thread de UI, senão `Frame.Navigate` falha.
@@ -312,14 +344,17 @@ stateDiagram-v2
 
 ### 9.3 Testes E2E
 
-O projeto `windows/tests/PasswordManager.App.E2E.Tests/` abre o `PasswordManager.App.exe` Debug de verdade e o dirige pela UI Automation (FlaUI.UIA3). Os testes de fluxo e de texto usam só padrões de UIA (`Invoke` em botões e itens, `Value` nas caixas de texto e no campo de senha). Os testes de teclado (`AccessibilityE2ETests`, §9.5) enviam teclas reais (`SendInput`), mas só depois de confirmar que a janela do app está em primeiro plano; se não estiver, o teste falha sem enviar nada. Nenhum clique de mouse é enviado. Os testes de proteção contra captura (`WindowProtectionE2ETests`, §9.6) leem a afinidade de exibição da janela e a movem para fora da tela e de volta com `SetWindowPos`; não enviam tecla nem clique. Os cinco fluxos de `NavigationE2ETests` cobrem perfis vazios, lista de perfis corrompida, cofre ausente, senha errada e o caminho desbloquear → detalhe → bloquear, seguindo as regras de §9.2. `LocalizationE2ETests` (sete testes) confere, em cada tela, que o texto exibido vem do `.resw` (§9.4). `ProfilesE2ETests` (seis testes) cobre a seleção de perfis na tela e no disco, descrita abaixo.
+O projeto `windows/tests/PasswordManager.App.E2E.Tests/` abre o `PasswordManager.App.exe` Debug de verdade e o dirige pela UI Automation (FlaUI.UIA3). Os testes de fluxo e de texto usam só padrões de UIA (`Invoke` em botões e itens, `Value` nas caixas de texto e no campo de senha, `Toggle` na caixa de confirmação do kit). Os testes de teclado (`AccessibilityE2ETests`, §9.5) enviam teclas reais (`SendInput`), mas só depois de confirmar que a janela do app está em primeiro plano; se não estiver, o teste falha sem enviar nada. Nenhum clique de mouse é enviado. Os testes de proteção contra captura (`WindowProtectionE2ETests`, §9.6) leem a afinidade de exibição da janela e a movem para fora da tela e de volta com `SetWindowPos`; não enviam tecla nem clique. Os cinco fluxos de `NavigationE2ETests` cobrem perfis vazios, lista de perfis corrompida, cofre ausente, senha errada e o caminho desbloquear → detalhe → bloquear, seguindo as regras de §9.2. `LocalizationE2ETests` (oito testes) confere, em cada tela, que o texto exibido vem do `.resw` (§9.4). `ProfilesE2ETests` (oito testes) cobre a seleção e a criação de perfis na tela e no disco, descrita abaixo.
 
 - **Isolamento**: cada teste cria uma pasta `pm-e2e-*` em `%TEMP%`, passa o caminho em `--vaults-dir` e a apaga no fim, inclusive após falha. O cofre vem de `spec/test-vectors/entries-unicode.pmvault`, e o `profiles.json` é escrito pelo próprio teste. Os testes nunca tocam em `%LOCALAPPDATA%\PasswordManagement\vaults\`. Se o processo de teste morrer no meio de um teste, o app pode ficar aberto: encerre `PasswordManager.App` manualmente.
 - **Uma janela por vez**: `AssemblyInfo.cs` desliga o paralelismo do xUnit, então só existe uma janela do app em cada momento.
-- **Ids como contrato**: todo elemento que um teste usa tem `AutomationProperties.AutomationId` (os ids estão nas cinco Views), inclusive os títulos das telas e a dica de lista vazia (`ProfilesTitle`, `ProfilesEmptyHint`, `CreateTitle`, `UnlockTitle`, `EntriesTitle`). Os testes localizam por id, nunca por texto. Os nomes acessíveis vêm da W-13 (§9.5). Um `Name` novo ou um template reestruturado não pode remover um id.
+- **Ids como contrato**: todo elemento que um teste usa tem `AutomationProperties.AutomationId` (os ids estão nas seis Views), inclusive os títulos das telas e a dica de lista vazia (`ProfilesTitle`, `ProfilesEmptyHint`, `CreateTitle`, `KitTitle`, `UnlockTitle`, `EntriesTitle`). Os testes localizam por id, nunca por texto. Os nomes acessíveis vêm da W-13 (§9.5). Um `Name` novo ou um template reestruturado não pode remover um id.
 - **Diálogos**: um `ContentDialog` fechado deixa na árvore do UIA só um grupo vazio com o seu id; quando ele abre, aparece uma janela com esse id. `AppSession` (`FindDialog`, `WaitDialog`, `WaitDialogGone` e `InvokeInDialog`) procura essa janela e acha os botões `PrimaryButton` e `CloseButton` dentro dela, pelos ids dos templates, não pelo texto.
-- **Perfis** (`ProfilesE2ETests`, seis testes):
-  - criar o primeiro perfil pela tela de criação e abri-lo pelo desbloqueio, com a janela excluída da captura durante a criação e de volta a `WDA_NONE` na lista;
+- **Caixas, estado e nomes** (`AppSession`, W-16): `Toggle(id)` marca uma `CheckBox` pelo `TogglePattern`; `IsEnabled(id)` lê se o elemento está habilitado e `WaitEnabled(id)` espera por isso (o `CanExecute` de um comando chega ao botão um instante depois); `WaitName(id, texto)` espera o nome do elemento, porque um texto ligado ao ViewModel pode ficar um instante atrás da entrada.
+- **Perfis** (`ProfilesE2ETests`, oito testes):
+  - criar o primeiro perfil pela tela de criação, passar pela página do Kit e abrir o perfil pelo desbloqueio. Na página do Kit, o nome do `KitText` casa com o formato do kit (`^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){7}$`), a janela está excluída da captura, `KitDone` começa desabilitado e só habilita depois de `Toggle("KitSavedCheck")`. Concluir leva à lista, a janela volta a `WDA_NONE` e o `KitText` some;
+  - frase-senha sugerida: `CreateSuggest` mostra uma frase de palavras minúsculas ligadas por `-` (23 caracteres ou mais), o medidor diz "muito forte", e só o nome é digitado; depois do Kit, o desbloqueio abre o cofre com a própria frase;
+  - medidor de força: ausente com o campo vazio, "muito fraca" para `aaaaaaaaaaaa`, "muito forte" para uma senha mista longa e fictícia, e `aaaaaaaaaaaa` ainda cria o perfil (o medidor não bloqueia);
   - nome repetido, senha curta e confirmação diferente: cada erro aparece na tela e a pasta fica igual antes e depois (nada é gravado);
   - renomear: cancelar não muda nada; salvar troca o nome e mantém o cofre;
   - excluir: cancelar deixa o perfil e os arquivos iguais; confirmar tira a entrada de `profiles.json` e os três arquivos do perfil (`.pmvault`, `.bak`, `.tmp`), e um cofre órfão da pasta continua intacto;
@@ -336,8 +371,8 @@ Convenções:
 
 - **XAML**: o texto estático vem de `x:Uid="Nome"`, e a chave é `Nome.Text`, `Nome.Content` ou `Nome.Header`. Dados vêm de `x:Bind`.
 - **Propriedades anexadas**: a chave é `Nome.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name`. O uid é o trecho antes do primeiro ponto, e é assim que a W-13 dá nome de acessibilidade às listas e aos controles (§9.5).
-- **Code-behind**: só chaves sem ponto, por `ResourceLoader.GetString("Chave")` na View (hoje, `AppTitle` na `MainWindow`, e as mensagens das regras de nome em `ProfileNameMessages`, usadas pela página de criação e pelo diálogo de renomear).
-- **ViewModels não têm texto**. Expõem estado (`UnlockError`, `IsEmpty`, `LoadFailed`, `NameError`, `PasswordError`) e a View escolhe a mensagem no resw. Não existe interface de provedor de texto: sem consumidor, ela só acrescentaria código.
+- **Code-behind**: só chaves sem ponto, por `ResourceLoader.GetString("Chave")` na View (hoje, `AppTitle` na `MainWindow`, as mensagens das regras de nome em `ProfileNameMessages`, usadas pela página de criação e pelo diálogo de renomear, e o texto do medidor de força em `PasswordStrengthMessages`, usado pela página de criação, o terceiro usuário de `GetString`). Cada chave fica inline na chamada, para a guarda casá-la com o resw.
+- **ViewModels não têm texto**. Expõem estado (`UnlockError`, `IsEmpty`, `LoadFailed`, `NameError`, `PasswordError`, `Strength`) e a View escolhe a mensagem no resw. Não existe interface de provedor de texto: sem consumidor, ela só acrescentaria código.
 - **Texto com valor**: a frase fica no resw com `{0}`, a View formata, e o ViewModel expõe só o número (ex.: a contagem regressiva da W-17).
 - **Exceções**: mensagens de exceção são em inglês, para o desenvolvedor, e **nunca chegam à tela**. O ViewModel traduz a exceção em estado, e a View mostra o texto do resw.
 
@@ -348,12 +383,12 @@ Convenções:
 - **Resw × código**: falha com chave duplicada ou de valor vazio; `x:Uid` sem nenhuma chave `Uid.*`; chave com ponto cujo uid não existe no XAML; chave sem ponto que nenhum `GetString` usa; e `GetString` com chave que não está no resw.
 - **Texto esperado** (`AppResources.ExpectedName(uid)`): a chave do `AutomationProperties.Name`, se existir; senão, a única `Text`, `Content` ou `Header` do uid. Os testes E2E usam essa função, então continuam válidos com os nomes de acessibilidade da W-13.
 
-**Varredura E2E** (`LocalizationE2ETests`, sete testes): em cada tela, todo `Text`, `Button`, `Edit`, `List` e `ListItem` com nome precisa vir do resw ou dos dados do teste (nome de perfil, título e usuário das entradas). Ficam de fora:
+**Varredura E2E** (`LocalizationE2ETests`, oito testes): em cada tela, todo `Text`, `Button`, `Edit`, `List` e `ListItem` com nome precisa vir do resw ou dos dados do teste (nome de perfil, título e usuário das entradas). Ficam de fora:
 
 - a subárvore `TitleBar` e a `ScrollBar`, que o Windows nomeia no idioma do sistema (`Sistema`, `Minimizar`, …);
 - elementos sem nome.
 
-Na tela de desbloqueio, a varredura só roda com o campo de senha vazio, porque o botão de mostrar senha do `PasswordBox` recebe nome do WinUI, não do resw. Cada chamada também roda logo depois de a âncora da tela aparecer.
+Na tela de desbloqueio, a varredura só roda com o campo de senha vazio, porque o botão de mostrar senha do `PasswordBox` recebe nome do WinUI, não do resw. O mesmo vale para a criação: a varredura roda com os campos de senha vazios, e o texto do medidor e o `CreateSuggestionHint` (a sugestão enche os campos) são conferidos por nome, um a um. Na página do Kit, a varredura roda com o texto do kit como dado do teste (`RecoveryKitPage_TextsComeFromResources`). Cada chamada também roda logo depois de a âncora da tela aparecer.
 
 Limite: a E2E roda neste Windows, em pt-BR. Nenhum teste cobre outro idioma do sistema; o app depende de `DefaultLanguage=pt-BR` para isso.
 
@@ -372,27 +407,31 @@ A W-13 fixa quatro regras: o app segue o tema do sistema, todo controle interati
 - `App.xaml` não tem `RequestedTheme`: o app segue `AppsUseLightTheme`, ao vivo. A barra de título segue o mesmo modo (`AppWindow.TitleBar.PreferredTheme = TitleBarTheme.UseDefaultAppMode`, em `MainWindow`).
 - Cor só por `{ThemeResource}`. Não há `ControlTemplate`, `Opacity` abaixo de 1, `HighContrastAdjustment="None"` nem cor literal em XAML ou C#.
 - High Contrast não é ligado em tempo de execução. Vale só a garantia estática: sem cor própria e sem template.
+- A barra do medidor de força (`ProgressBar`, W-16) não tem cor própria: `ShowError` (muito fraca e fraca) e `ShowPaused` (razoável) escolhem o estado, e as cores vêm do tema.
 
 **Nomes**
 
 - Botões e campos têm nome pelo `Content` ou `Header` do resw (§9.4). Um controle sem esse texto recebe a chave `AutomationProperties.Name` do resw, ou um binding ou `LabeledBy`.
 - As listas têm nome do resw: `ProfilesList` = "Lista de perfis" e `EntriesList` = "Lista de entradas".
 - Os diálogos de Perfis têm nome pela chave `ProfileRenameDialog.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name` (e `ProfileDeleteDialog`), no mesmo padrão das listas.
+- A barra do medidor de força (`CreateStrengthBar`) é nomeada pelo texto `CreateStrength` (`AutomationProperties.LabeledBy`): o sentido está no texto, e a barra não recebe foco.
 - Os itens são nomeados pelos dados, no `ContainerContentChanging` de cada lista: `Profile.DisplayName` e `VaultEntry.Title`. Não se usa `ToString()`. Os handlers são privados e ligados por `x:Bind` (`OnProfileContainerContentChanging`, `OnEntryContainerContentChanging`).
 - Todo controle interativo tem `AutomationProperties.AutomationId` e nome. Os testes de teclado conferem isso em cada tela; itens de lista ficam de fora do id, porque o nome vem dos dados.
 
 **Teclado**
 
-- **Foco inicial**, ao carregar a página: perfis → o item do perfil, quando há perfis, ou Novo perfil quando a lista está vazia; criação → campo de nome; desbloqueio → campo de senha; lista de entradas → a lista, ou Bloquear quando o cofre está vazio; detalhe → título.
+- **Foco inicial**, ao carregar a página: perfis → o item do perfil, quando há perfis, ou Novo perfil quando a lista está vazia; criação → campo de nome; Kit de Recuperação → a caixa "Anotei o Kit de Recuperação"; desbloqueio → campo de senha; lista de entradas → a lista, ou Bloquear quando o cofre está vazio; detalhe → título.
 - **Tab e Shift+Tab** seguem a ordem dos controles:
   - perfis: item → Renomear → Excluir → Novo perfil → item (o ciclo passa pelos botões de cada item; não há atalhos extras como F2 ou Delete);
-  - criação: nome → senha → confirmação → Criar → Voltar → nome;
+  - criação: nome → senha → confirmação → Sugerir frase-senha → Criar → Voltar → nome (o medidor, a barra e o texto da sugestão não recebem foco);
+  - Kit de Recuperação: caixa de confirmação → Concluir, que só entra na ordem depois de a caixa ser marcada (desabilitado, ele não recebe foco);
   - desbloqueio: campo de senha → Desbloquear → Voltar → campo de senha;
   - lista de entradas: Tab leva a Bloquear, e outro Tab volta ao último item focado;
   - detalhe: usuário → URL → pasta → notas → Voltar.
 - **Setas**: sobem e descem na lista de entradas.
-- **Enter**: ativa o item ou o botão focado. No campo de senha, desbloqueia, como o botão. Na confirmação da senha da criação, cria, como o botão.
-- **Escape**: volta, no desbloqueio, na criação e no detalhe. É um `KeyboardAccelerator` Escape oculto nos botões `UnlockBack`, `CreateBack` e `DetailBack`.
+- **Enter**: ativa o item ou o botão focado. No campo de senha, desbloqueia, como o botão. Na confirmação da senha da criação, cria, como o botão. Na página do Kit, Enter em Concluir leva à lista de perfis.
+- **Espaço**: marca a caixa "Anotei o Kit de Recuperação", o que habilita Concluir.
+- **Escape**: volta, no desbloqueio, na criação e no detalhe. É um `KeyboardAccelerator` Escape oculto nos botões `UnlockBack`, `CreateBack` e `DetailBack`. **Na página do Kit, Escape não faz nada**: não há Voltar, e o teste de teclado confere que o `KitText` continua na tela depois dele.
 - **Diálogos de Perfis**: Renomear tem o foco no campo de nome ao abrir, e Escape cancela. Excluir tem Cancelar como botão padrão, então Enter cancela; só o botão de excluir apaga (§5.6).
 - Ao voltar do detalhe, o foco não vai para a entrada que foi aberta (ponto em aberto, §13).
 
@@ -415,7 +454,7 @@ A W-13 fixa quatro regras: o app segue o tema do sistema, todo controle interati
 
 Lêem os XAML e o C# de `App` e `ViewModels` como texto, sem janela e sem Roslyn. Regras:
 
-- **Classificação fechada**: todo elemento XAML precisa estar numa lista de interativos ou de passivos. Um tipo novo falha até alguém decidir qual é. `ContentDialog` é passivo: é um contêiner cujos botões são partes do template (nome pelo resw, §9.4), e o conteúdo é checado como qualquer marcação. `Style` e `Setter` também são passivos: só carregam propriedades, como o `HorizontalContentAlignment` que estica o item da lista de perfis.
+- **Classificação fechada**: todo elemento XAML precisa estar numa lista de interativos ou de passivos. Um tipo novo falha até alguém decidir qual é. `ProgressBar` é passivo (W-16): não recebe foco, e o sentido dele está no texto `CreateStrength`, que o nomeia. `ContentDialog` é passivo: é um contêiner cujos botões são partes do template (nome pelo resw, §9.4), e o conteúdo é checado como qualquer marcação. `Style` e `Setter` também são passivos: só carregam propriedades, como o `HorizontalContentAlignment` que estica o item da lista de perfis.
 - **Interativo**: tem `AutomationId` e nome (ver Nomes).
 - **Foco**: sem `ControlTemplate`, sem `IsTabStop="False"` em controle interativo, sem `UseSystemFocusVisuals="False"` e sem espessura zero do foco.
 - **Tema em XAML**: sem `RequestedTheme`, sem `HighContrastAdjustment="None"`, sem `SolidColorBrush`, gradiente, `AcrylicBrush` ou `Color`, sem propriedade de cor que não seja `{ThemeResource}` e sem `Opacity` abaixo de 1.
@@ -434,9 +473,9 @@ A W-14 fixa uma regra: com o cofre aberto (lista e detalhe), a janela do app tem
 
 **Regra por página, fail-closed**
 
-- `PageViewModel.AllowsScreenCapture` é virtual e o padrão é `false`. Só `ProfilesViewModel` e `UnlockViewModel` sobrescrevem para `true`; `CreateProfileViewModel`, `EntryListViewModel` e `EntryDetailViewModel` herdam `false`. A página de criação tem a senha mestra e o botão de mostrar, então nunca pode ser capturada: o `ProfilesE2ETests` confere que a janela já está excluída nela.
-- Uma página nova (exibição do Kit de Recuperação, editor, configurações) já nasce protegida e só sai disso se declarar que não mostra nada de um cofre aberto.
-- A regra fica no ViewModel, então é testada sem janela (`ScreenCaptureTests`, 5 testes, incluindo a página de criação e o fluxo inteiro: a lista de valores de `AllowsScreenCapture` a cada `Navigated`).
+- `PageViewModel.AllowsScreenCapture` é virtual e o padrão é `false`. Só `ProfilesViewModel` e `UnlockViewModel` sobrescrevem para `true`; `CreateProfileViewModel`, `RecoveryKitViewModel`, `EntryListViewModel` e `EntryDetailViewModel` herdam `false`. A página de criação tem a senha mestra, o botão de mostrar e a frase sugerida, então nunca pode ser capturada. A página do Kit mostra o texto que abre o cofre, então também não: o `ProfilesE2ETests` confere que a janela já está excluída nas duas e que volta a `WDA_NONE` na lista de perfis depois de Concluir.
+- Uma página nova (editor, configurações) já nasce protegida e só sai disso se declarar que não mostra nada de um cofre aberto. A do Kit de Recuperação (W-16) nasceu assim, sem sobrescrever nada.
+- A regra fica no ViewModel, então é testada sem janela (`ScreenCaptureTests`, 6 testes, incluindo as páginas de criação e do Kit e o fluxo inteiro: a lista de valores de `AllowsScreenCapture` a cada `Navigated`, com Perfis (permite) → Criação (não) → Kit (não) → Perfis (permite) no trecho de criação).
 
 **Ordem na `MainWindow.OnNavigated`**
 
@@ -506,9 +545,9 @@ Os testes unitários rodam na JVM do host com `lazysodium-java` (só no escopo d
 
 | Onde | Como rodar | Cobertura |
 |---|---|---|
-| `windows/tests/PasswordManager.Core.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** | ~1.180 testes: KDF com valores conhecidos, wrap/unwrap, corpo, adulteração byte a byte de cada região, arquivo atômico, perfis, troca de senha, kit, sessão (inclusive concorrência) e vetores. |
-| `windows/tests/PasswordManager.ViewModels.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** | 90 testes sem janela: `NavigationService` (14), os cinco ViewModels de página (Perfis, 26; Criação de perfil, 24; Desbloqueio, 11, inclusive a senha zerada depois do desbloqueio; Lista, 7; Detalhe, 2), o fluxo Perfis → Desbloqueio → Lista → Detalhe → Voltar → Bloquear (1) e a regra de captura de tela por página (`ScreenCaptureTests`, 5, §9.6). |
-| `windows/tests/PasswordManager.App.E2E.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** (só Debug; precisa de desktop interativo) | 5 fluxos de ponta a ponta no app real, dirigido pela UI Automation: perfis vazios, lista corrompida, cofre ausente, senha errada e desbloquear → detalhe → bloquear. Mais 6 de perfis (`ProfilesE2ETests`, §9.3), 7 testes de texto (`LocalizationE2ETests`, §9.4), 6 de teclado e nomes (`AccessibilityE2ETests`, §9.5), 1 de tema (`ThemeE2ETests`, §9.5) e 2 de proteção contra captura (`WindowProtectionE2ETests`, §9.6), também só Debug. Ao todo o projeto tem 159 testes: 27 só Debug e 132 que rodam também em Release (as guardas de §9.4 e §9.5 e os 11 de pixels). |
+| `windows/tests/PasswordManager.Core.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** | 1.218 testes (1 ignorado: o gerador de vetores): KDF com valores conhecidos, wrap/unwrap, corpo, adulteração byte a byte de cada região, arquivo atômico, perfis, troca de senha, kit, sessão (inclusive concorrência) e vetores. Em `Passwords/` (34, W-16): a lista de palavras bate com a publicada pela EFF (SHA-256 do recurso embutido), a frase-senha, e o estimador com os padrões fracos pinados, as faixas de força e a entrada longa. |
+| `windows/tests/PasswordManager.ViewModels.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** | 110 testes sem janela: `NavigationService` (14), os seis ViewModels de página (Perfis, 26; Criação de perfil, 36, inclusive o medidor, a sugestão e o kit mostrado de verdade, que abre o cofre; Kit de Recuperação, 7; Desbloqueio, 11, inclusive a senha zerada depois do desbloqueio; Lista, 7; Detalhe, 2), o fluxo Perfis → Desbloqueio → Lista → Detalhe → Voltar → Bloquear → Criação → Kit → Perfis (1) e a regra de captura de tela por página (`ScreenCaptureTests`, 6, §9.6). |
+| `windows/tests/PasswordManager.App.E2E.Tests` | `dotnet test --solution PasswordManager.slnx` **a partir de `windows/`** (só Debug; precisa de desktop interativo) | 5 fluxos de ponta a ponta no app real, dirigido pela UI Automation: perfis vazios, lista corrompida, cofre ausente, senha errada e desbloquear → detalhe → bloquear. Mais 8 de perfis e criação (`ProfilesE2ETests`, §9.3), 8 testes de texto (`LocalizationE2ETests`, §9.4), 6 de teclado e nomes (`AccessibilityE2ETests`, §9.5), 1 de tema (`ThemeE2ETests`, §9.5) e 2 de proteção contra captura (`WindowProtectionE2ETests`, §9.6), também só Debug. Ao todo o projeto tem 162 testes: 30 só Debug e 132 que rodam também em Release (as guardas de §9.4 e §9.5 e os 11 de pixels). |
 | `windows/tests/PasswordManager.App.E2E.Tests/Localization` | `dotnet test --project tests/PasswordManager.App.E2E.Tests/PasswordManager.App.E2E.Tests.csproj --filter-class PasswordManager.App.E2E.Tests.Localization.LocalizationGuardTests` **a partir de `windows/`** (roda também em Release; sem janela) | 51 guardas estáticas: texto literal em XAML e C# (inclusive os atributos de importação nativa), e consistência entre o resw, os `x:Uid` e os `GetString` (§9.4). |
 | `windows/tests/PasswordManager.App.E2E.Tests/Accessibility` | `dotnet test --project tests/PasswordManager.App.E2E.Tests/PasswordManager.App.E2E.Tests.csproj --filter-class PasswordManager.App.E2E.Tests.Accessibility.AccessibilityGuardTests` **a partir de `windows/`** (roda também em Release; sem janela) | 70 guardas estáticas de classificação, nomes, foco e tema nos XAML e no C# (§9.5). |
 | `windows/tests/PasswordManager.App.E2E.Tests/Accessibility` | `dotnet test --project tests/PasswordManager.App.E2E.Tests/PasswordManager.App.E2E.Tests.csproj --filter-class PasswordManager.App.E2E.Tests.Accessibility.ScreenPixelsTests` **a partir de `windows/`** (roda também em Release; sem janela) | 11 testes: 7 da matemática de contraste WCAG (luminância relativa, razão, cor de fundo e pior pixel) usada no teste de tema (§9.5) e 4 de `ChangedFraction`, a comparação de duas capturas usada no teste de proteção contra captura (§9.6). |
@@ -524,16 +563,19 @@ Os vetores foram gerados uma vez por `TestVectorGenerator` (teste explícito, qu
 | Windows Core | `NSec.Cryptography` | libsodium (Argon2id, XChaCha20-Poly1305) |
 | Windows ViewModels | `CommunityToolkit.Mvvm` | `ObservableObject` e `RelayCommand`; sem WinUI nem rede |
 | Windows App | `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`, `CommunityToolkit.Mvvm` | WinUI 3 e MVVM |
+| Windows Core (dado, não pacote) | EFF Short Wordlist #1, licença CC BY | 1.296 palavras da frase-senha sugerida (W-16), embutidas **sem alteração** no assembly (`Passwords/eff_short_wordlist_1.txt`); a atribuição está em `THIRD-PARTY-NOTICES.md`. Sem pacote novo. |
 | Windows testes | `xunit.v3` | testes |
 | Windows testes E2E | `FlaUI.UIA3` (traz `FlaUI.Core` e `Interop.UIAutomationClient`) | UI Automation local para dirigir o app; só no projeto de teste, sem rede |
 | Android core | `lazysodium-android` + `jna` (aar), `kotlinx-serialization-json` | libsodium e JSON |
 | Android app | AndroidX (Compose BOM, Material 3, Activity, Lifecycle, Biometric) | UI e biometria |
 
-Versões fixadas em `Directory.Packages.props` (com lockfiles) e `libs.versions.toml`. Nenhuma dependência de rede ou telemetria.
+Versões fixadas em `Directory.Packages.props` (com lockfiles) e `libs.versions.toml`. Nenhuma dependência de rede ou telemetria. O medidor de força (D4) não trouxe pacote: é o estimador próprio de §4.2.
+
+A outra opção de lista de palavras em pt-BR (Dadoware) foi descartada: licença CC BY-NC (uso não comercial) e 1.484 das 7.776 palavras têm acento, difícil de digitar em outros teclados. A lista grande da EFF (109 KB) também ficou de fora, para manter o app pequeno.
 
 ## 13. O que vem a seguir
 
-- **App Windows**: a F3 (perfis e desbloqueio, com Argon2id fora da thread de UI e atraso progressivo) começou com a W-15: perfis com criação, renomeação e exclusão já estão prontos. Faltam a W-16 (medidor de força, sugestão de frase-senha, exibição do Kit de Recuperação e aviso mais forte de que não há recuperação) e a W-17 (atraso progressivo do desbloqueio). Depois, F4 (entradas: busca, edição, gerador, área de transferência) e F5 (exportação/importação `.pmvault` e CSV, configurações), conforme o épico.
+- **App Windows**: a F3 (perfis e desbloqueio, com Argon2id fora da thread de UI e atraso progressivo) tem a W-15 e a W-16 prontas: perfis com criação (com medidor de força, sugestão de frase-senha, aviso de que não há recuperação e exibição do Kit de Recuperação), renomeação e exclusão. Falta a W-17 (atraso progressivo do desbloqueio). Depois, F4 (entradas: busca, edição, gerador, área de transferência) e F5 (exportação/importação `.pmvault` e CSV, configurações), conforme o épico.
 - **Android `:core`**: completar `MasterPassword`, `RecoveryKit`, `VaultSession` e o teste dos vetores. Quando passar, o formato v1 é congelado.
 - **Distribuição (F6)**: ícones, MSIX sem `internetClient`, build de release, assinatura.
 
@@ -542,10 +584,15 @@ Versões fixadas em `Directory.Packages.props` (com lockfiles) e `libs.versions.
 - Depois de `ChangePassword`, o `.bak` ainda abre com a senha antiga até o próximo `Save` (decisão da W-07/W-09, ainda não resolvida).
 - `PasswordBox` só expõe `string`: a cópia gerenciada da senha mestra que a `UnlockPage` cria antes de virar `char[]` fica no heap até o GC. Limite aceito por enquanto; revisar na W-17 e na W-32.
 - E2E só exercita o app Debug; o binário Release/trimado não é coberto (D5/W-29).
-- Decisões D2–D6 do épico (canal de distribuição, certificado, medidor de força, trimming, versão mínima do Windows).
+- Decisões D2, D3, D5 e D6 do épico (canal de distribuição, certificado, trimming, versão mínima do Windows). A D4 (medidor de força) foi decidida na W-16: estimador próprio no `Core`, sem dependência (§4.2).
 - Ao voltar do detalhe, o foco não retorna à entrada que foi aberta. Restaurar isso é fora de escopo da W-13 (W-19/W-20).
-- A tela de Desbloqueio continua capturável (W-14, §9.6). O botão de mostrar senha do `PasswordBox` pode expor a senha mestra a uma captura; revisar na W-16/W-17.
+- A tela de Desbloqueio continua capturável (W-14, §9.6). O botão de mostrar senha do `PasswordBox` pode expor a senha mestra a uma captura; revisar na W-17 (a página de criação, que também tem esse botão, já fica fora das capturas).
 - Miniaturas da barra de tarefas e do Alt+Tab não são verificadas (§9.6).
 - O teste de tema (`ThemeE2ETests`) troca por alguns segundos o `AppsUseLightTheme` do usuário e o restaura no fim. Se a execução morrer no meio, a próxima restaura pelo marcador `%TEMP%\pm-e2e-theme-restore` (§9.5).
 - Perfis criados antes da W-16 têm um kit cujo texto ninguém viu: o buffer é zerado sem ser mostrado. Isso é inofensivo (o kit só não serve para recuperar a senha). A W-26 pode trocá-lo por um kit novo com `RecoveryKit.Create`.
+- **Fechar o app na página do Kit perde o kit.** O perfil e o cofre já estão gravados e sãos, mas ninguém viu o kit (o mesmo caso do item acima); a W-26 pode gerar um novo. A página não tem Voltar, e a pilha `[Perfis, Criação, Kit]` só é segura por isso: um gesto global de voltar, se um dia existir, tem que ignorá-la.
+- **Strings gerenciadas da W-16**: a frase sugerida (`TextBlock` e os dois `PasswordBox`), o texto do kit (`TextBlock`) e a leitura do campo de senha a cada tecla pelo medidor criam `string` que não pode ser zerada. É o mesmo limite do `PasswordBox` (§6), aceito por enquanto; revisar na W-32. Nunca podem ir para log nem para exceção.
+- **Aviso de terceiros**: a atribuição CC BY da lista de palavras da EFF está só em `THIRD-PARTY-NOTICES.md`. O aviso precisa ir dentro do pacote MSIX ou numa tela "Sobre" (W-28 e W-30; a tela de configurações da W-26 pode abrigá-la).
+- **Android**: quando ganhar a criação de perfil, precisa usar a mesma lista de palavras (EFF Short #1, 6 palavras ligadas por `-`) e as mesmas regras e faixas do estimador, para a sugestão e o medidor serem iguais nas duas plataformas.
+- O medidor é uma heurística (lista própria de 60 senhas comuns, 128 caracteres analisados) e só informa. Se a qualidade se mostrar insuficiente, a decisão D4 pode ser revista sem mudar o formato do cofre.
 - O mínimo de 12 caracteres da senha mestra fica no ViewModel (`CreateProfileViewModel.MinimumPasswordLength`). O Android precisa da mesma regra quando ganhar a criação de perfil.
