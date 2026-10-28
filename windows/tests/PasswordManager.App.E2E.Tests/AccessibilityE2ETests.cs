@@ -19,14 +19,101 @@ public sealed class AccessibilityE2ETests
         app.WaitFocus(ProfileItem);
         AssertEveryFocusableElementIsNamed(app);
 
-        // The list is the only tab stop of the screen, so Tab wraps back to it.
-        app.PressKey(VirtualKeyShort.TAB);
-        app.WaitFocus(ProfileItem);
+        // From the item, Tab goes into its buttons, then wraps to the create button above the list and back to the item.
+        foreach (var expected in new[] { "ProfileRename", "ProfileDelete", "ProfilesCreate", ProfileItem })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        foreach (var expected in new[] { "ProfilesCreate", "ProfileDelete", "ProfileRename", ProfileItem })
+        {
+            app.PressChord(VirtualKeyShort.SHIFT, VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
 
         app.PressKey(VirtualKeyShort.RETURN);
         app.WaitFor("UnlockPassword");
         app.WaitFocus("UnlockPassword");
         AssertEveryFocusableElementIsNamed(app);
+    }
+
+    [Fact]
+    public void EmptyFolder_CreateWorksWithoutMouse()
+    {
+        using var app = AppSession.Launch();
+
+        app.WaitFocus("ProfilesCreate");
+        AssertEveryFocusableElementIsNamed(app);
+
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("CreateName");
+        app.WaitFocus("CreateName");
+        AssertEveryFocusableElementIsNamed(app);
+        foreach (var expected in new[] { "CreatePassword", "CreateConfirmPassword", "CreateButton", "CreateBack", "CreateName" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitFor("ProfilesList");
+        app.WaitGone("CreateName");
+        app.WaitFocus("ProfilesCreate");
+
+        // The values go in through UI Automation (fictitious password); Enter in the confirmation creates.
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("CreateName");
+        app.WaitFocus("CreateName");
+        app.SetValue("CreateName", "Perfil Teclado");
+        app.SetValue("CreatePassword", "frase-ficticia-teclado");
+        app.SetValue("CreateConfirmPassword", "frase-ficticia-teclado");
+        app.WaitFor("CreateConfirmPassword").Focus();
+        app.WaitFocus("CreateConfirmPassword");
+        app.PressKey(VirtualKeyShort.RETURN);
+
+        app.WaitFor("ProfilesList");
+        app.WaitGone("CreateName");
+        app.WaitItems("ProfilesList", 1);
+        app.WaitFocus("ProfilesList[Perfil Teclado]");
+    }
+
+    [Fact]
+    public void ProfileDialogs_WorkWithoutMouse()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        app.WaitFocus(ProfileItem);
+        var id = SeededVault.ProfileId(app.VaultsDirectory);
+        var files = Directory.GetFiles(app.VaultsDirectory).Order(StringComparer.Ordinal).ToArray();
+        var list = File.ReadAllBytes(Path.Combine(app.VaultsDirectory, "profiles.json"));
+
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("ProfileRename");
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("ProfileDelete");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitDialog("ProfileDeleteDialog");
+        AssertEveryFocusableElementIsNamed(app);
+
+        // Close is the default button, so Enter cancels.
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitDialogGone("ProfileDeleteDialog");
+        app.WaitFocus(ProfileItem);
+        Assert.Single(app.WaitItems("ProfilesList", 1));
+        Assert.Equal(files, Directory.GetFiles(app.VaultsDirectory).Order(StringComparer.Ordinal));
+        Assert.Equal(list, File.ReadAllBytes(Path.Combine(app.VaultsDirectory, "profiles.json")));
+        Assert.True(File.Exists(Path.Combine(app.VaultsDirectory, $"{id}.pmvault")));
+
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("ProfileRename");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitDialog("ProfileRenameDialog");
+        app.WaitFocus("ProfileRenameName");
+
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitDialogGone("ProfileRenameDialog");
+        app.WaitFocus(ProfileItem);
+        Assert.Equal(list, File.ReadAllBytes(Path.Combine(app.VaultsDirectory, "profiles.json")));
     }
 
     [Fact]

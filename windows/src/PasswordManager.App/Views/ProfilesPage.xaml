@@ -14,16 +14,36 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock
-            AutomationProperties.AutomationId="ProfilesTitle"
-            x:Uid="ProfilesTitle"
-            Style="{StaticResource TitleTextBlockStyle}" />
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                AutomationProperties.AutomationId="ProfilesTitle"
+                x:Uid="ProfilesTitle"
+                VerticalAlignment="Center"
+                Style="{StaticResource TitleTextBlockStyle}" />
+            <Button
+                x:Name="CreateProfileButton"
+                Grid.Column="1"
+                AutomationProperties.AutomationId="ProfilesCreate"
+                x:Uid="ProfilesCreate"
+                VerticalAlignment="Center"
+                Command="{x:Bind ViewModel.CreateProfileCommand}"
+                Style="{StaticResource AccentButtonStyle}" />
+        </Grid>
 
-        <TextBlock
-            Grid.Row="1"
-            AutomationProperties.AutomationId="ProfilesLoadFailed"
-            x:Uid="ProfilesLoadFailed"
-            Visibility="{x:Bind ViewModel.LoadFailed, Mode=OneWay}" />
+        <StackPanel Grid.Row="1" Spacing="8">
+            <TextBlock
+                AutomationProperties.AutomationId="ProfilesLoadFailed"
+                x:Uid="ProfilesLoadFailed"
+                Visibility="{x:Bind ViewModel.LoadFailed, Mode=OneWay}" />
+            <TextBlock
+                AutomationProperties.AutomationId="ProfilesActionFailed"
+                x:Uid="ProfilesActionFailed"
+                Visibility="{x:Bind ViewModel.ActionFailed, Mode=OneWay}" />
+        </StackPanel>
 
         <ListView
             x:Name="ProfilesList"
@@ -35,12 +55,38 @@
             ItemClick="OnProfileClick"
             ItemsSource="{x:Bind ViewModel.Profiles, Mode=OneWay}"
             SelectionMode="None">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="profiles:Profile">
-                    <TextBlock
-                        AutomationProperties.AutomationId="ProfileName"
-                        Margin="0,12"
-                        Text="{x:Bind DisplayName}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            AutomationProperties.AutomationId="ProfileName"
+                            Margin="0,12"
+                            VerticalAlignment="Center"
+                            Text="{x:Bind DisplayName}"
+                            TextTrimming="CharacterEllipsis" />
+                        <Button
+                            Grid.Column="1"
+                            AutomationProperties.AutomationId="ProfileRename"
+                            x:Uid="ProfileRename"
+                            VerticalAlignment="Center"
+                            Click="OnRenameClick" />
+                        <Button
+                            Grid.Column="2"
+                            AutomationProperties.AutomationId="ProfileDelete"
+                            x:Uid="ProfileDelete"
+                            VerticalAlignment="Center"
+                            Click="OnDeleteClick" />
+                    </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
@@ -62,5 +108,47 @@
                 HorizontalAlignment="Center"
                 Style="{StaticResource BodyTextBlockStyle}" />
         </StackPanel>
+
+        <!-- Both dialogs show only names that are already in clear in profiles.json, so the page stays capturable. -->
+        <ContentDialog
+            x:Name="RenameDialog"
+            AutomationProperties.AutomationId="ProfileRenameDialog"
+            x:Uid="ProfileRenameDialog"
+            DefaultButton="Primary"
+            PrimaryButtonClick="OnRenamePrimaryClick"
+            Style="{StaticResource DefaultContentDialogStyle}">
+            <StackPanel MinWidth="320" Spacing="8">
+                <TextBox
+                    x:Name="RenameInput"
+                    AutomationProperties.AutomationId="ProfileRenameName"
+                    x:Uid="ProfileRenameName"
+                    Text="{x:Bind ViewModel.RenameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ProfileRenameError"
+                    Text="{x:Bind local:ProfileNameMessages.Text(ViewModel.RenameError), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ProfileNameMessages.Visible(ViewModel.RenameError), Mode=OneWay}" />
+            </StackPanel>
+        </ContentDialog>
+
+        <!-- Close is the default: Enter and Escape both cancel, so a delete always takes a deliberate choice. -->
+        <ContentDialog
+            x:Name="DeleteDialog"
+            AutomationProperties.AutomationId="ProfileDeleteDialog"
+            x:Uid="ProfileDeleteDialog"
+            DefaultButton="Close"
+            Style="{StaticResource DefaultContentDialogStyle}">
+            <StackPanel MaxWidth="400" Spacing="8">
+                <TextBlock
+                    AutomationProperties.AutomationId="ProfileDeleteName"
+                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    Text="{x:Bind ViewModel.PendingDelete.DisplayName, Mode=OneWay}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ProfileDeleteWarning"
+                    x:Uid="ProfileDeleteWarning"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </ContentDialog>
     </Grid>
 </Page>

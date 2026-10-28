@@ -96,6 +96,56 @@ public sealed class LocalizationE2ETests
     }
 
     [Fact]
+    public void CreatePage_TextsComeFromResources()
+    {
+        using var app = AppSession.Launch();
+        app.Invoke("ProfilesCreate");
+
+        // Both boxes empty, so the PasswordBox reveal buttons, named by WinUI, are not shown.
+        app.WaitFor("CreateName");
+        app.WaitGone("ProfilesList");
+        AssertNameFromResources(app, "CreateTitle");
+        AssertNameFromResources(app, "CreateName");
+        AssertNameFromResources(app, "CreatePassword");
+        AssertNameFromResources(app, "CreateConfirmPassword");
+        AssertNameFromResources(app, "CreateNoRecoveryWarning");
+        AssertNameFromResources(app, "CreateButton");
+        AssertNameFromResources(app, "CreateBack", "NavBack");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // An empty name and a short fictitious password; the view empties the boxes after the attempt.
+        app.SetValue("CreatePassword", "curta-ficti");
+        app.SetValue("CreateConfirmPassword", "curta-ficti");
+        app.Invoke("CreateButton");
+        Assert.Equal(AppResources.Strings["ProfileNameEmpty"], app.WaitFor("CreateNameError").Name);
+        AssertNameFromResources(app, "CreatePasswordTooShort");
+        AssertEveryTextFromResourcesOrData(app);
+    }
+
+    [Fact]
+    public void ProfileDialogs_TextsComeFromResources()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        Assert.Single(app.WaitItems("ProfilesList", 1));
+
+        app.Invoke("ProfileRename");
+        app.WaitFor("ProfileRenameName");
+        AssertNameFromResources(app, "ProfileRenameDialog");
+        AssertNameFromResources(app, "ProfileRenameName");
+        AssertEveryTextFromResourcesOrData(app, SeededVault.ProfileName);
+        app.InvokeInDialog("ProfileRenameDialog", "CloseButton");
+        app.WaitDialogGone("ProfileRenameDialog");
+
+        app.Invoke("ProfileDelete");
+        app.WaitFor("ProfileDeleteName");
+        AssertNameFromResources(app, "ProfileDeleteDialog");
+        AssertNameFromResources(app, "ProfileDeleteWarning");
+        AssertEveryTextFromResourcesOrData(app, SeededVault.ProfileName);
+        app.InvokeInDialog("ProfileDeleteDialog", "CloseButton");
+        app.WaitDialogGone("ProfileDeleteDialog");
+    }
+
+    [Fact]
     public void EmptyVault_EntriesEmptyTextComesFromResources()
     {
         using var app = AppSession.Launch(SeededVault.SeedEmpty);

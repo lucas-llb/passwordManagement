@@ -37,6 +37,14 @@ public sealed class ScreenCaptureTests : IDisposable
     }
 
     [Fact]
+    public void AllowsScreenCapture_CreateProfile_IsFalse()
+    {
+        var create = new CreateProfileViewModel(_profiles.Repository, _navigation);
+
+        Assert.False(create.AllowsScreenCapture);
+    }
+
+    [Fact]
     public void AllowsScreenCapture_PageWithoutOverride_IsFalse()
     {
         var page = new RecordingPage("page", []);

@@ -22,6 +22,14 @@ internal static class SeededVault
 
     public static void SeedProfileOnly(string directory) => WriteProfileList(directory);
 
+    // The id of the only profile in the folder's profiles.json (as written by a seed or by the app).
+    public static string ProfileId(string directory)
+    {
+        using var list = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(directory, "profiles.json")));
+        var profile = Assert.Single(list.RootElement.GetProperty("profiles").EnumerateArray());
+        return profile.GetProperty("id").GetString()!;
+    }
+
     private static JsonElement ReadManifest(string vectorName) => JsonDocument.Parse(
         File.ReadAllBytes(Path.Combine(AppSession.Metadata("TestVectorsDir"), $"{vectorName}.json"))).RootElement;
 
