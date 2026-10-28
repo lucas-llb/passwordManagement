@@ -42,6 +42,12 @@
   <data name="UnlockVaultUnreadable.Text" xml:space="preserve">
     <value>Não foi possível ler o arquivo do cofre.</value>
   </data>
+  <data name="UnlockProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Verificando a senha mestra</value>
+  </data>
+  <data name="UnlockRetryCountdown" xml:space="preserve">
+    <value>Aguarde {0} s para tentar de novo.</value>
+  </data>
   <data name="NavBack.Content" xml:space="preserve">
     <value>Voltar</value>
   </data>

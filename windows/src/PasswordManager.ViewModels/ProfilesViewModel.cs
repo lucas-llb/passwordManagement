@@ -14,14 +14,20 @@ public sealed partial class ProfilesViewModel : PageViewModel
 {
     private readonly ProfileRepository _repository;
     private readonly INavigationService _navigation;
+    private readonly UnlockThrottle _throttle;
 
-    public ProfilesViewModel(ProfileRepository repository, INavigationService navigation)
+    /// <param name="repository">The profile store.</param>
+    /// <param name="navigation">The page stack.</param>
+    /// <param name="throttle">The unlock delay, passed on to the unlock screens this page opens.</param>
+    public ProfilesViewModel(ProfileRepository repository, INavigationService navigation, UnlockThrottle throttle)
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(throttle);
 
         _repository = repository;
         _navigation = navigation;
+        _throttle = throttle;
         Profiles = [];
         RenameText = string.Empty;
     }
@@ -92,12 +98,12 @@ public sealed partial class ProfilesViewModel : PageViewModel
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        _navigation.NavigateTo(new UnlockViewModel(profile, _repository, _navigation));
+        _navigation.NavigateTo(new UnlockViewModel(profile, _repository, _navigation, _throttle));
     }
 
     // Nothing to create into while the list cannot be read: Create and ValidateDisplayName would throw.
     [RelayCommand(CanExecute = nameof(CanCreateProfile))]
-    private void CreateProfile() => _navigation.NavigateTo(new CreateProfileViewModel(_repository, _navigation));
+    private void CreateProfile() => _navigation.NavigateTo(new CreateProfileViewModel(_repository, _navigation, _throttle));
 
     private bool CanCreateProfile() => !LoadFailed;
 

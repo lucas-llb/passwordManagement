@@ -13,22 +13,26 @@ public sealed partial class EntryListViewModel : PageViewModel
     private readonly VaultSession _session;
     private readonly ProfileRepository _repository;
     private readonly INavigationService _navigation;
+    private readonly UnlockThrottle _throttle;
 
     public EntryListViewModel(
         Profile profile,
         VaultSession session,
         ProfileRepository repository,
-        INavigationService navigation)
+        INavigationService navigation,
+        UnlockThrottle throttle)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(throttle);
 
         _profile = profile;
         _session = session;
         _repository = repository;
         _navigation = navigation;
+        _throttle = throttle;
         Entries = session.Content.Entries;
     }
 
@@ -56,7 +60,7 @@ public sealed partial class EntryListViewModel : PageViewModel
     {
         _session.Dispose();
         Entries = [];
-        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation));
-        _navigation.NavigateTo(new UnlockViewModel(_profile, _repository, _navigation));
+        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle));
+        _navigation.NavigateTo(new UnlockViewModel(_profile, _repository, _navigation, _throttle));
     }
 }

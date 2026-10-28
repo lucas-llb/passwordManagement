@@ -64,13 +64,17 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "UnlockBack", "NavBack");
         AssertEveryTextFromResourcesOrData(app, SeededVault.ProfileName);
 
-        // Wrong password
+        // Wrong password: the countdown sentence is the resw format with the number of seconds; it may vanish while the
+        // sweep runs, which is fine.
         app.TypePassword("senha-errada-ficticia");
         app.Invoke("UnlockButton");
         AssertNameFromResources(app, "UnlockWrongPassword");
-        AssertEveryTextFromResourcesOrData(app, SeededVault.ProfileName);
+        var countdown = AppResources.Format("UnlockRetryCountdown", 1);
+        app.WaitName("UnlockRetryCountdown", countdown);
+        AssertEveryTextFromResourcesOrData(app, SeededVault.ProfileName, countdown);
 
-        // Entries
+        // Entries, once the delay is over
+        app.WaitEnabled("UnlockButton");
         app.TypePassword(SeededVault.Password);
         app.Invoke("UnlockButton");
         app.WaitFor("EntriesList");

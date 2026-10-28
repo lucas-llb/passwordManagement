@@ -82,6 +82,11 @@ internal sealed class AppSession : IDisposable
         Assert.True(gone, $"Element '{automationId}' is still shown.");
     }
 
+    // Polls fast for an element that may be shown only for a moment (for example a ring while an unlock runs); true once
+    // it has been seen.
+    public bool WaitAppears(string automationId, TimeSpan timeout, TimeSpan poll) =>
+        Retry.WhileNull(() => Find(automationId), timeout, poll).Result is not null;
+
     public void Invoke(string automationId) => WaitFor(automationId).Patterns.Invoke.Pattern.Invoke();
 
     // Flips a CheckBox (or any toggle) through its TogglePattern, as a click or Space would.

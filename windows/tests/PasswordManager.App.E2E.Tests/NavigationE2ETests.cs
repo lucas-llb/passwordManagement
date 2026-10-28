@@ -54,6 +54,8 @@ public sealed class NavigationE2ETests
         Assert.NotNull(app.Find("UnlockPassword"));
         Assert.Null(app.Find("EntriesList"));
 
+        // The wrong password starts a one-second delay before the next attempt.
+        app.WaitEnabled("UnlockButton");
         app.TypePassword(SeededVault.Password);
         app.Invoke("UnlockButton");
         app.WaitFor("EntriesList");

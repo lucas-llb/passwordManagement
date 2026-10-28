@@ -19,11 +19,12 @@ public partial class App : Application
     {
         var navigation = new NavigationService();
         var repository = new ProfileRepository(ResolveVaultsDirectory());
+        var throttle = new UnlockThrottle(TimeProvider.System);
 
         _window = new MainWindow(navigation);
         _window.Activate();
 
-        navigation.ResetTo(new ProfilesViewModel(repository, navigation));
+        navigation.ResetTo(new ProfilesViewModel(repository, navigation, throttle));
     }
 
     // Debug builds only: the E2E tests pass --vaults-dir <absolute folder> so they never touch the real vaults folder.

@@ -19,22 +19,37 @@ internal sealed class TestProfiles : IDisposable
     public TestProfiles()
     {
         Repository = new ProfileRepository(_directory.FullName);
+        Time = new ManualTimeProvider();
+        Throttle = new UnlockThrottle(Time);
     }
 
     public ProfileRepository Repository { get; }
 
+    /// <summary>The clock of <see cref="Throttle"/>: a test moves it with <c>Advance</c> instead of waiting.</summary>
+    public ManualTimeProvider Time { get; }
+
+    /// <summary>The unlock delay that every ViewModel of a test shares, like the one the app creates.</summary>
+    public UnlockThrottle Throttle { get; }
+
     public string DirectoryPath => _directory.FullName;
 
     /// <summary>Creates a profile with a vault protected by <paramref name="password"/> and holding <paramref name="entries"/>.</summary>
-    public Profile CreateProfile(string name, string password, params VaultEntry[] entries)
+    public Profile CreateProfile(string name, string password, params VaultEntry[] entries) =>
+        CreateProfile(name, password, LowCost, entries);
+
+    /// <summary>
+    /// Creates a profile whose vault uses the given Argon2id cost. Pass <see cref="KdfParameters.Default"/> for a
+    /// profile with the real cost of the app (64 MiB, 3 passes), whose unlock takes long enough to observe.
+    /// </summary>
+    public Profile CreateProfile(string name, string password, KdfParameters parameters, params VaultEntry[] entries)
     {
         var kitText = new char[RecoveryKit.TextLength];
         try
         {
-            var file = VaultSession.Create(password, kitText, LowCost);
+            var file = VaultSession.Create(password, kitText, parameters);
             var profile = Repository.Create(name, file);
 
-            using var session = new VaultSession(Repository.GetVaultPath(profile.Id), LowCost);
+            using var session = new VaultSession(Repository.GetVaultPath(profile.Id), parameters);
             session.Unlock(password);
             session.Save(new VaultContent { Entries = entries });
 

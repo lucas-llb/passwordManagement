@@ -18,10 +18,20 @@ public sealed class EntryListViewModelTests : IDisposable
     {
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, entries);
         var session = _profiles.OpenSession(profile);
-        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle);
         _navigation.ResetTo(list);
 
         return (profile, session, list);
+    }
+
+    [Fact]
+    public void Constructor_NullThrottle_Throws()
+    {
+        var profile = _profiles.CreateProfile("Alice", TestProfiles.Password);
+        using var session = _profiles.OpenSession(profile);
+
+        Assert.Throws<ArgumentNullException>(
+            () => new EntryListViewModel(profile, session, _profiles.Repository, _navigation, null!));
     }
 
     [Fact]

@@ -18,11 +18,12 @@ public sealed class RecoveryKitViewModelTests : IDisposable
     // Profiles -> Create -> Kit, the way a successful create leaves the stack.
     private (ProfilesViewModel ProfilesPage, RecoveryKitViewModel Page, char[] Kit) OpenKitPage()
     {
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
         _navigation.ResetTo(profilesPage);
-        _navigation.NavigateTo(new CreateProfileViewModel(_profiles.Repository, _navigation, TestProfiles.LowCost));
+        _navigation.NavigateTo(
+            new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle, TestProfiles.LowCost));
         var kit = Kit();
-        var page = new RecoveryKitViewModel(kit, _profiles.Repository, _navigation);
+        var page = new RecoveryKitViewModel(kit, _profiles.Repository, _navigation, _profiles.Throttle);
         _navigation.NavigateTo(page);
 
         return (profilesPage, page, kit);
@@ -31,14 +32,17 @@ public sealed class RecoveryKitViewModelTests : IDisposable
     [Fact]
     public void Constructor_NullOrWrongLength_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new RecoveryKitViewModel(null!, _profiles.Repository, _navigation));
-        Assert.Throws<ArgumentNullException>(() => new RecoveryKitViewModel(Kit(), null!, _navigation));
-        Assert.Throws<ArgumentNullException>(() => new RecoveryKitViewModel(Kit(), _profiles.Repository, null!));
+        var repository = _profiles.Repository;
+        var throttle = _profiles.Throttle;
+        Assert.Throws<ArgumentNullException>(() => new RecoveryKitViewModel(null!, repository, _navigation, throttle));
+        Assert.Throws<ArgumentNullException>(() => new RecoveryKitViewModel(Kit(), null!, _navigation, throttle));
+        Assert.Throws<ArgumentNullException>(() => new RecoveryKitViewModel(Kit(), repository, null!, throttle));
+        Assert.Throws<ArgumentNullException>(() => new RecoveryKitViewModel(Kit(), repository, _navigation, null!));
 
         foreach (var length in new[] { 0, RecoveryKit.TextLength - 1, RecoveryKit.TextLength + 1 })
         {
             Assert.Throws<ArgumentException>(
-                () => new RecoveryKitViewModel(new char[length], _profiles.Repository, _navigation));
+                () => new RecoveryKitViewModel(new char[length], _profiles.Repository, _navigation, _profiles.Throttle));
         }
     }
 

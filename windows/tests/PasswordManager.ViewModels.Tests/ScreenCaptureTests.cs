@@ -19,8 +19,8 @@ public sealed class ScreenCaptureTests : IDisposable
     {
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password);
 
-        var profiles = new ProfilesViewModel(_profiles.Repository, _navigation);
-        var unlock = new UnlockViewModel(profile, _profiles.Repository, _navigation);
+        var profiles = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
+        var unlock = new UnlockViewModel(profile, _profiles.Repository, _navigation, _profiles.Throttle);
 
         Assert.True(profiles.AllowsScreenCapture);
         Assert.True(unlock.AllowsScreenCapture);
@@ -32,7 +32,7 @@ public sealed class ScreenCaptureTests : IDisposable
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         using var session = _profiles.OpenSession(profile);
 
-        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle);
         var detail = new EntryDetailViewModel(list.Entries[0], _navigation);
 
         Assert.False(list.AllowsScreenCapture);
@@ -42,7 +42,7 @@ public sealed class ScreenCaptureTests : IDisposable
     [Fact]
     public void AllowsScreenCapture_CreateProfile_IsFalse()
     {
-        var create = new CreateProfileViewModel(_profiles.Repository, _navigation);
+        var create = new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
 
         Assert.False(create.AllowsScreenCapture);
     }
@@ -50,7 +50,11 @@ public sealed class ScreenCaptureTests : IDisposable
     [Fact]
     public void AllowsScreenCapture_RecoveryKit_IsFalse()
     {
-        var kit = new RecoveryKitViewModel(new char[RecoveryKit.TextLength], _profiles.Repository, _navigation);
+        var kit = new RecoveryKitViewModel(
+            new char[RecoveryKit.TextLength],
+            _profiles.Repository,
+            _navigation,
+            _profiles.Throttle);
 
         Assert.False(kit.AllowsScreenCapture);
     }
@@ -77,7 +81,7 @@ public sealed class ScreenCaptureTests : IDisposable
         _navigation.Navigated += (_, _) => captured.Add(_navigation.Current?.AllowsScreenCapture ?? false);
 
         // Profiles: the root.
-        _navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, _navigation));
+        _navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle));
         var profilesPage = Assert.IsType<ProfilesViewModel>(_navigation.Current);
 
         // Profiles -> Unlock.
@@ -87,7 +91,8 @@ public sealed class ScreenCaptureTests : IDisposable
         // A wrong password does not change the page, so it raises no event.
         await unlock.UnlockCommand.ExecuteAsync(WrongPassword.ToCharArray());
 
-        // Unlock -> List: the vault is open.
+        // Unlock -> List: the vault is open, once the delay after the wrong password has run out.
+        _profiles.Time.Advance(TimeSpan.FromSeconds(1));
         await unlock.UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
         var list = Assert.IsType<EntryListViewModel>(_navigation.Current);
 
@@ -102,7 +107,8 @@ public sealed class ScreenCaptureTests : IDisposable
         Assert.True(_navigation.GoBack());
 
         // Profiles -> Create -> Kit -> Profiles: the master password and then the Recovery Kit are never capturable.
-        _navigation.NavigateTo(new CreateProfileViewModel(_profiles.Repository, _navigation, TestProfiles.LowCost));
+        _navigation.NavigateTo(
+            new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle, TestProfiles.LowCost));
         var create = Assert.IsType<CreateProfileViewModel>(_navigation.Current);
         create.DisplayName = "Bob";
         await create.CreateCommand.ExecuteAsync(
