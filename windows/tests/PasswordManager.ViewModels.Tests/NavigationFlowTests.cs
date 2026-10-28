@@ -20,7 +20,7 @@ public sealed class NavigationFlowTests : IDisposable
         var navigation = new NavigationService();
 
         // Profiles: the root, listing both profiles.
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle));
         var profilesPage = Assert.IsType<ProfilesViewModel>(navigation.Current);
         Assert.Equal(2, profilesPage.Profiles.Count);
         Assert.False(navigation.CanGoBack);

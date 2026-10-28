@@ -164,6 +164,6 @@ D2, D3, D5, D6 ──► F6 ─────────────────�
 | Formato precisar mudar logo após a release (ex.: Kit de Recuperação, Windows Hello) | v2 cedo, migração de cofres | D1 decidido em W-01: tabela de slots. |
 | Divergência Windows ↔ Android no formato | exportação não abre no outro app | Vetores compartilhados como portão obrigatório; mesma libsodium nas duas pontas. |
 | Trimming quebrar WinUI/reflexão | crash só no build de release | D5; testar sempre o pacote de release, não só o Debug. |
-| Argon2id lento em máquinas fracas | desbloqueio travando a UI | Rodar fora da thread de UI; medir; parâmetros já ficam no cabeçalho para ajuste futuro. |
+| Argon2id lento em máquinas fracas | desbloqueio travando a UI | Rodar fora da thread de UI; medir (medido na W-17, [architecture.md](architecture.md) §4.3: ~40 ms na máquina de desenvolvimento; a linha da máquina modesta está pendente); parâmetros já ficam no cabeçalho para ajuste futuro. |
 | Custo/burocracia de assinatura e Store | atraso na publicação | Iniciar D2/D3 cedo, em paralelo com F1. |
 | Dependência nova para medidor de força | aumento de superfície | D4 decidido sem dependência (W-16). |

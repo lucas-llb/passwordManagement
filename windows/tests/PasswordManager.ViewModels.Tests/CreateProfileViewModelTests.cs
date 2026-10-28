@@ -44,9 +44,13 @@ public sealed class CreateProfileViewModelTests : IDisposable
         ProfileRepository? repository = null)
     {
         repository ??= _profiles.Repository;
-        var profilesPage = new ProfilesViewModel(repository, _navigation);
+        var profilesPage = new ProfilesViewModel(repository, _navigation, _profiles.Throttle);
         _navigation.ResetTo(profilesPage);
-        var create = new CreateProfileViewModel(repository, _navigation, parameters ?? TestProfiles.LowCost);
+        var create = new CreateProfileViewModel(
+            repository,
+            _navigation,
+            _profiles.Throttle,
+            parameters ?? TestProfiles.LowCost);
         _navigation.NavigateTo(create);
 
         return (profilesPage, create);
@@ -79,6 +83,17 @@ public sealed class CreateProfileViewModelTests : IDisposable
     {
         Assert.NotEmpty(chars);
         Assert.All(chars, c => Assert.Equal('\0', c));
+    }
+
+    [Fact]
+    public void Constructor_NullArgument_Throws()
+    {
+        var repository = _profiles.Repository;
+        var throttle = _profiles.Throttle;
+
+        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(null!, _navigation, throttle));
+        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(repository, null!, throttle));
+        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(repository, _navigation, null!));
     }
 
     [Fact]
@@ -375,9 +390,9 @@ public sealed class CreateProfileViewModelTests : IDisposable
     [Fact]
     public async Task Create_DefaultConstructor_UsesDefaultKdfParameters()
     {
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
         _navigation.ResetTo(profilesPage);
-        var create = new CreateProfileViewModel(_profiles.Repository, _navigation);
+        var create = new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
         _navigation.NavigateTo(create);
         create.DisplayName = "Alice";
 

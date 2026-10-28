@@ -24,22 +24,27 @@ public sealed partial class CreateProfileViewModel : PageViewModel
 
     private readonly ProfileRepository _repository;
     private readonly INavigationService _navigation;
+    private readonly UnlockThrottle _throttle;
     private readonly KdfParameters _kdfParameters;
 
     /// <param name="repository">The profile store.</param>
     /// <param name="navigation">The page stack.</param>
+    /// <param name="throttle">The unlock delay, passed on to the pages that follow this one.</param>
     /// <param name="kdfParameters">Argon2id cost for the new vault. The app passes nothing and gets
     /// <see cref="KdfParameters.Default"/>; lower values are for tests only.</param>
     public CreateProfileViewModel(
         ProfileRepository repository,
         INavigationService navigation,
+        UnlockThrottle throttle,
         KdfParameters? kdfParameters = null)
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(navigation);
+        ArgumentNullException.ThrowIfNull(throttle);
 
         _repository = repository;
         _navigation = navigation;
+        _throttle = throttle;
         _kdfParameters = kdfParameters ?? KdfParameters.Default;
         DisplayName = string.Empty;
 
@@ -169,7 +174,7 @@ public sealed partial class CreateProfileViewModel : PageViewModel
 
         if (shownKit is not null)
         {
-            _navigation.NavigateTo(new RecoveryKitViewModel(shownKit, _repository, _navigation));
+            _navigation.NavigateTo(new RecoveryKitViewModel(shownKit, _repository, _navigation, _throttle));
         }
     }
 

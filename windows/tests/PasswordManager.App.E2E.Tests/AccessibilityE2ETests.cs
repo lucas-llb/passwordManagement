@@ -163,10 +163,24 @@ public sealed class AccessibilityE2ETests
         app.TypePassword("senha-errada-ficticia");
         app.PressKey(VirtualKeyShort.RETURN);
         app.WaitFor("UnlockWrongPassword");
-        app.WaitFocus("UnlockPassword");
         Assert.Null(app.Find("EntriesList"));
 
-        UnlockByKeyboard(app, SeededVault.Password);
+        // During the one-second delay Enter does nothing: the right password stays in the box and the page stays on
+        // Unlock. The countdown still shown after the key was processed proves the key came inside the delay.
+        app.TypePassword(SeededVault.Password);
+        app.PressKey(VirtualKeyShort.RETURN);
+        Assert.NotNull(app.Find("UnlockRetryCountdown"));
+        Assert.Null(app.Find("EntriesList"));
+        app.WaitFocus("UnlockPassword");
+
+        // Once the delay ends, Enter on the same, untouched box unlocks.
+        app.WaitEnabled("UnlockButton");
+        app.WaitGone("UnlockRetryCountdown");
+        app.WaitFocus("UnlockPassword");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("EntriesList");
+        app.WaitGone("UnlockPassword");
+        AssertEveryFocusableElementIsNamed(app);
         app.WaitFocus(EntryItem(0));
     }
 

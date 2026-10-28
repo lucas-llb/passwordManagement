@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Xml.Linq;
 
 namespace PasswordManager.App.E2E.Tests.Localization;
@@ -22,6 +23,10 @@ internal static class AppResources
     public static string ReswPath => Path.Combine(AppDir, "Strings", "pt-BR", "Resources.resw");
 
     public static IReadOnlyDictionary<string, string> Strings => LazyStrings.Value;
+
+    // A resw value with {0}-style placeholders, formatted as the app formats it (current culture).
+    public static string Format(string key, params object[] args) =>
+        string.Format(CultureInfo.CurrentCulture, Strings[key], args);
 
     // Recursive; build output folders (bin, obj) hold generated copies of the sources, so they never count.
     public static IReadOnlyList<string> SourceFiles(string directory, string pattern) =>
