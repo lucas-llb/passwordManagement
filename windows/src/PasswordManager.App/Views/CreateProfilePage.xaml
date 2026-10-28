@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="PasswordManager.App.Views.CreateProfilePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:PasswordManager.App.Views"
+    Loaded="OnLoaded">
+
+    <ScrollViewer>
+        <Grid Padding="24">
+            <StackPanel
+                MaxWidth="400"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="16">
+                <TextBlock
+                    AutomationProperties.AutomationId="CreateTitle"
+                    x:Uid="CreateTitle"
+                    Style="{StaticResource TitleTextBlockStyle}" />
+
+                <TextBox
+                    x:Name="NameInput"
+                    AutomationProperties.AutomationId="CreateName"
+                    x:Uid="CreateName"
+                    Text="{x:Bind ViewModel.DisplayName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="CreateNameError"
+                    Text="{x:Bind local:ProfileNameMessages.Text(ViewModel.NameError), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ProfileNameMessages.Visible(ViewModel.NameError), Mode=OneWay}" />
+
+                <PasswordBox
+                    x:Name="PasswordInput"
+                    AutomationProperties.AutomationId="CreatePassword"
+                    x:Uid="CreatePassword" />
+                <PasswordBox
+                    x:Name="ConfirmInput"
+                    AutomationProperties.AutomationId="CreateConfirmPassword"
+                    x:Uid="CreateConfirmPassword"
+                    KeyDown="OnConfirmKeyDown" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="CreatePasswordTooShort"
+                    x:Uid="CreatePasswordTooShort"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CreateProfilePage.IsTooShort(ViewModel.PasswordError), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="CreatePasswordMismatch"
+                    x:Uid="CreatePasswordMismatch"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CreateProfilePage.IsMismatch(ViewModel.PasswordError), Mode=OneWay}" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="CreateNoRecoveryWarning"
+                    x:Uid="CreateNoRecoveryWarning"
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="CreateFailed"
+                    x:Uid="CreateFailed"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind ViewModel.CreateFailed, Mode=OneWay}" />
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button
+                        AutomationProperties.AutomationId="CreateButton"
+                        x:Uid="CreateButton"
+                        Click="OnCreateClick"
+                        IsEnabled="{x:Bind local:CreateProfilePage.IsNot(ViewModel.CreateCommand.IsRunning), Mode=OneWay}"
+                        Style="{StaticResource AccentButtonStyle}" />
+                    <Button
+                        AutomationProperties.AutomationId="CreateBack"
+                        x:Uid="NavBack"
+                        Command="{x:Bind ViewModel.GoBackCommand}"
+                        KeyboardAcceleratorPlacementMode="Hidden">
+                        <Button.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="Escape" />
+                        </Button.KeyboardAccelerators>
+                    </Button>
+                    <ProgressRing
+                        Width="24"
+                        Height="24"
+                        IsActive="{x:Bind ViewModel.CreateCommand.IsRunning, Mode=OneWay}" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>

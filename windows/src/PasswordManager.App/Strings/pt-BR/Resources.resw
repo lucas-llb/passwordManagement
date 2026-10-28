@@ -75,4 +75,85 @@
   <data name="DetailNotes.Header" xml:space="preserve">
     <value>Notas</value>
   </data>
+  <data name="ProfilesCreate.Content" xml:space="preserve">
+    <value>Novo perfil</value>
+  </data>
+  <data name="ProfileRename.Content" xml:space="preserve">
+    <value>Renomear</value>
+  </data>
+  <data name="ProfileDelete.Content" xml:space="preserve">
+    <value>Excluir</value>
+  </data>
+  <data name="ProfilesActionFailed.Text" xml:space="preserve">
+    <value>Não foi possível alterar a lista de perfis.</value>
+  </data>
+  <data name="ProfileRenameDialog.Title" xml:space="preserve">
+    <value>Renomear perfil</value>
+  </data>
+  <data name="ProfileRenameDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Salvar</value>
+  </data>
+  <data name="ProfileRenameDialog.CloseButtonText" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="ProfileRenameDialog.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Renomear perfil</value>
+  </data>
+  <data name="ProfileRenameName.Header" xml:space="preserve">
+    <value>Nome do perfil</value>
+  </data>
+  <data name="ProfileDeleteDialog.Title" xml:space="preserve">
+    <value>Excluir perfil?</value>
+  </data>
+  <data name="ProfileDeleteDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Excluir</value>
+  </data>
+  <data name="ProfileDeleteDialog.CloseButtonText" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="ProfileDeleteDialog.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Excluir perfil?</value>
+  </data>
+  <data name="ProfileDeleteWarning.Text" xml:space="preserve">
+    <value>O cofre deste perfil e todas as senhas guardadas nele serão apagados deste computador. Isso não pode ser desfeito.</value>
+  </data>
+  <data name="ProfileNameEmpty" xml:space="preserve">
+    <value>Digite um nome para o perfil.</value>
+  </data>
+  <data name="ProfileNameTooLong" xml:space="preserve">
+    <value>Use no máximo 64 caracteres.</value>
+  </data>
+  <data name="ProfileNameInvalidCharacter" xml:space="preserve">
+    <value>O nome tem um caractere inválido.</value>
+  </data>
+  <data name="ProfileNameDuplicate" xml:space="preserve">
+    <value>Já existe um perfil com esse nome.</value>
+  </data>
+  <data name="CreateTitle.Text" xml:space="preserve">
+    <value>Novo perfil</value>
+  </data>
+  <data name="CreateName.Header" xml:space="preserve">
+    <value>Nome do perfil</value>
+  </data>
+  <data name="CreatePassword.Header" xml:space="preserve">
+    <value>Senha mestra (mínimo de 12 caracteres)</value>
+  </data>
+  <data name="CreateConfirmPassword.Header" xml:space="preserve">
+    <value>Confirme a senha mestra</value>
+  </data>
+  <data name="CreatePasswordTooShort.Text" xml:space="preserve">
+    <value>A senha mestra precisa ter pelo menos 12 caracteres.</value>
+  </data>
+  <data name="CreatePasswordMismatch.Text" xml:space="preserve">
+    <value>As duas senhas não são iguais.</value>
+  </data>
+  <data name="CreateNoRecoveryWarning.Text" xml:space="preserve">
+    <value>Não há como recuperar a senha mestra pelo app. Se você esquecê-la, as senhas deste perfil ficam inacessíveis.</value>
+  </data>
+  <data name="CreateFailed.Text" xml:space="preserve">
+    <value>Não foi possível criar o perfil.</value>
+  </data>
+  <data name="CreateButton.Content" xml:space="preserve">
+    <value>Criar perfil</value>
+  </data>
 </root>

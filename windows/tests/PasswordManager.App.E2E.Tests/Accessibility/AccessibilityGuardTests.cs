@@ -61,6 +61,11 @@ public sealed class AccessibilityGuardTests
                   </Button.KeyboardAccelerators>
                 </Button>
                 <ListView>
+                  <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                  </ListView.ItemContainerStyle>
                   <ListView.ItemTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding Name}" />
@@ -68,6 +73,7 @@ public sealed class AccessibilityGuardTests
                   </ListView.ItemTemplate>
                 </ListView>
                 <ProgressRing />
+                <ContentDialog x:Uid="Confirm" />
               </Grid>
             </Page>
             """;

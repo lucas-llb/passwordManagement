@@ -84,7 +84,36 @@ internal sealed class AppSession : IDisposable
 
     public void Invoke(string automationId) => WaitFor(automationId).Patterns.Invoke.Pattern.Invoke();
 
-    public void TypePassword(string password) => WaitFor("UnlockPassword").Patterns.Value.Pattern.SetValue(password);
+    public void TypePassword(string password) => SetValue("UnlockPassword", password);
+
+    // Sets the text of a TextBox or a PasswordBox through its ValuePattern (only fictitious passwords in tests).
+    public void SetValue(string automationId, string value) => WaitFor(automationId).Patterns.Value.Pattern.SetValue(value);
+
+    // A ContentDialog declared in a page always leaves an empty Group with its AutomationId in the tree; only while it is
+    // shown is there also a Window element with that id, which holds the content and the buttons.
+    public AutomationElement? FindDialog(string dialogId) =>
+        Window.FindFirstDescendant(cf => cf.ByAutomationId(dialogId).And(cf.ByControlType(ControlType.Window)));
+
+    public AutomationElement WaitDialog(string dialogId) =>
+        Retry.WhileNull(() => FindDialog(dialogId), Timeout, TimeSpan.FromMilliseconds(100)).Result
+        ?? throw new InvalidOperationException($"Dialog '{dialogId}' did not open.");
+
+    public void WaitDialogGone(string dialogId)
+    {
+        var gone = Retry.WhileTrue(() => FindDialog(dialogId) is not null, Timeout, TimeSpan.FromMilliseconds(100)).Result;
+        Assert.True(gone, $"Dialog '{dialogId}' is still open.");
+    }
+
+    // A ContentDialog's buttons are its template parts, whose AutomationIds are PrimaryButton and CloseButton; they are
+    // looked up under the open dialog, never by their text.
+    public void InvokeInDialog(string dialogId, string buttonId)
+    {
+        var dialog = WaitDialog(dialogId);
+        var button = Retry.WhileNull(
+            () => dialog.FindFirstDescendant(cf => cf.ByAutomationId(buttonId)), Timeout, TimeSpan.FromMilliseconds(100)).Result
+            ?? throw new InvalidOperationException($"Button '{buttonId}' of dialog '{dialogId}' did not appear.");
+        button.Patterns.Invoke.Pattern.Invoke();
+    }
 
     // Every keystroke goes through here: it brings the app window to the front and refuses to go on unless the
     // foreground window really is the app, so a key can never land in another program.
@@ -167,6 +196,15 @@ internal sealed class AppSession : IDisposable
 
     public AutomationElement[] Items(string listId) =>
         WaitFor(listId).FindAllChildren(cf => cf.ByControlType(ControlType.ListItem));
+
+    // The items once the list holds exactly this many; a list refreshed after a change may still be building them.
+    public AutomationElement[] WaitItems(string listId, int count)
+    {
+        Retry.WhileFalse(() => Items(listId).Length == count, Timeout, TimeSpan.FromMilliseconds(100));
+        var items = Items(listId);
+        Assert.True(items.Length == count, $"Expected {count} items in '{listId}', found {items.Length}.");
+        return items;
+    }
 
     public static string TextOf(AutomationElement item, string automationId) =>
         (item.FindFirstDescendant(cf => cf.ByAutomationId(automationId))

@@ -56,6 +56,9 @@ public sealed partial class MainWindow : Window
             case ProfilesViewModel profiles:
                 RootFrame.Navigate(typeof(ProfilesPage), profiles);
                 break;
+            case CreateProfileViewModel create:
+                RootFrame.Navigate(typeof(CreateProfilePage), create);
+                break;
             case UnlockViewModel unlock:
                 RootFrame.Navigate(typeof(UnlockPage), unlock);
                 break;
