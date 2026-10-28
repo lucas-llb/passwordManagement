@@ -84,6 +84,27 @@ internal sealed class AppSession : IDisposable
 
     public void Invoke(string automationId) => WaitFor(automationId).Patterns.Invoke.Pattern.Invoke();
 
+    // Flips a CheckBox (or any toggle) through its TogglePattern, as a click or Space would.
+    public void Toggle(string automationId) => WaitFor(automationId).Patterns.Toggle.Pattern.Toggle();
+
+    public bool IsEnabled(string automationId) => WaitFor(automationId).IsEnabled;
+
+    // Waits until the element is enabled (or disabled); a command's CanExecute reaches the button a moment later.
+    public void WaitEnabled(string automationId, bool expected = true)
+    {
+        var reached = Retry.WhileFalse(() => IsEnabled(automationId) == expected, Timeout, TimeSpan.FromMilliseconds(100)).Success;
+        Assert.True(reached, $"Element '{automationId}' is {(expected ? "still disabled" : "still enabled")}.");
+    }
+
+    // Waits until the element shows this name; a text bound to the view model may lag a moment behind the input.
+    public void WaitName(string automationId, string expected)
+    {
+        var actual = Retry.WhileFalse(() => WaitFor(automationId).Name == expected, Timeout, TimeSpan.FromMilliseconds(100)).Success
+            ? expected
+            : WaitFor(automationId).Name;
+        Assert.Equal(expected, actual);
+    }
+
     public void TypePassword(string password) => SetValue("UnlockPassword", password);
 
     // Sets the text of a TextBox or a PasswordBox through its ValuePattern (only fictitious passwords in tests).

@@ -11,6 +11,9 @@ public sealed class ProfilesE2ETests
     private const string NewProfileName = "Perfil Criado";
     private const string NewPassword = "frase-ficticia-de-teste";
 
+    // Crockford base32, eight groups of four: the alphabet has no I, L, O or U.
+    private const string KitTextPattern = "^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){7}$";
+
     [Fact]
     public void EmptyFolder_CreateProfile_ListsItAndItsVaultUnlocks()
     {
@@ -26,9 +29,20 @@ public sealed class ProfilesE2ETests
         app.SetValue("CreateConfirmPassword", NewPassword);
         app.Invoke("CreateButton");
 
-        // Argon2id runs with the default cost here, about a second.
-        app.WaitFor("ProfilesList");
+        // Argon2id runs with the default cost here, about a second. The kit page comes next, still excluded from capture.
+        var kit = app.WaitFor("KitText");
         app.WaitGone("CreateName");
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
+        Assert.Matches(KitTextPattern, kit.Name);
+
+        // Concluir waits for the acknowledgment.
+        Assert.False(app.IsEnabled("KitDone"));
+        app.Toggle("KitSavedCheck");
+        app.WaitEnabled("KitDone");
+        app.Invoke("KitDone");
+
+        app.WaitFor("ProfilesList");
+        app.WaitGone("KitText");
         var profile = Assert.Single(app.WaitItems("ProfilesList", 1));
         Assert.Equal(NewProfileName, AppSession.TextOf(profile, "ProfileName"));
         app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
@@ -42,6 +56,55 @@ public sealed class ProfilesE2ETests
         app.TypePassword(NewPassword);
         app.Invoke("UnlockButton");
         app.WaitFor("EntriesEmpty");
+    }
+
+    [Fact]
+    public void CreateProfile_SuggestedPassphrase_FillsBothBoxesAndUnlocks()
+    {
+        using var app = AppSession.Launch();
+        app.Invoke("ProfilesCreate");
+        app.WaitFor("CreateName");
+
+        app.Invoke("CreateSuggest");
+        var suggestion = app.WaitFor("CreateSuggestion").Name;
+        Assert.Matches("^[a-z]+(-[a-z]+)+$", suggestion);
+        Assert.True(suggestion.Length >= 23, "The suggested passphrase is shorter than six of the shortest words.");
+        app.WaitFor("CreateSuggestionHint");
+        app.WaitName("CreateStrength", AppResources.Strings["PasswordStrengthVeryStrong"]);
+
+        // Only the name is typed: the suggestion is already in both boxes.
+        app.SetValue("CreateName", NewProfileName);
+        app.Invoke("CreateButton");
+        FinishKitPage(app);
+
+        Assert.Single(app.WaitItems("ProfilesList", 1)).Patterns.Invoke.Pattern.Invoke();
+        app.TypePassword(suggestion);
+        app.Invoke("UnlockButton");
+        app.WaitFor("EntriesEmpty");
+    }
+
+    [Fact]
+    public void CreateProfile_StrengthMeter_FollowsPasswordAndDoesNotBlock()
+    {
+        const string weak = "aaaaaaaaaaaa";
+        using var app = AppSession.Launch();
+        app.Invoke("ProfilesCreate");
+        app.WaitFor("CreateName");
+        Assert.Null(app.Find("CreateStrength"));
+
+        app.SetValue("CreatePassword", weak);
+        app.WaitName("CreateStrength", AppResources.Strings["PasswordStrengthVeryWeak"]);
+
+        app.SetValue("CreatePassword", "Ficticia#Forte-9q2Lx7Vb");
+        app.WaitName("CreateStrength", AppResources.Strings["PasswordStrengthVeryStrong"]);
+
+        // The meter only informs: twelve characters are enough to create.
+        app.SetValue("CreateName", NewProfileName);
+        app.SetValue("CreatePassword", weak);
+        app.SetValue("CreateConfirmPassword", weak);
+        app.Invoke("CreateButton");
+        app.WaitFor("KitText");
+        app.WaitGone("CreateName");
     }
 
     [Fact]
@@ -176,6 +239,18 @@ public sealed class ProfilesE2ETests
 
         app.WaitFor("ProfilesLoadFailed");
         Assert.False(app.WaitFor("ProfilesCreate").IsEnabled);
+    }
+
+    // The kit page after a create: check the box, then Concluir returns to the profile list.
+    private static void FinishKitPage(AppSession app)
+    {
+        app.WaitFor("KitText");
+        app.WaitGone("CreateName");
+        app.Toggle("KitSavedCheck");
+        app.WaitEnabled("KitDone");
+        app.Invoke("KitDone");
+        app.WaitFor("ProfilesList");
+        app.WaitGone("KitText");
     }
 
     private static void Attempt(AppSession app, string name, string password, string confirmation)

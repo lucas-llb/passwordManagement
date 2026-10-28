@@ -1,3 +1,4 @@
+using PasswordManager.Core.Vault;
 using PasswordManager.ViewModels.Navigation;
 
 namespace PasswordManager.ViewModels.Tests;
@@ -5,6 +6,8 @@ namespace PasswordManager.ViewModels.Tests;
 public sealed class ScreenCaptureTests : IDisposable
 {
     private const string WrongPassword = "a fictitious wrong passphrase";
+
+    private const string NewPassword = "a fictitious new passphrase";
 
     private readonly TestProfiles _profiles = new();
     private readonly NavigationService _navigation = new();
@@ -42,6 +45,14 @@ public sealed class ScreenCaptureTests : IDisposable
         var create = new CreateProfileViewModel(_profiles.Repository, _navigation);
 
         Assert.False(create.AllowsScreenCapture);
+    }
+
+    [Fact]
+    public void AllowsScreenCapture_RecoveryKit_IsFalse()
+    {
+        var kit = new RecoveryKitViewModel(new char[RecoveryKit.TextLength], _profiles.Repository, _navigation);
+
+        Assert.False(kit.AllowsScreenCapture);
     }
 
     [Fact]
@@ -90,6 +101,17 @@ public sealed class ScreenCaptureTests : IDisposable
         // Unlock -> Profiles, with no vault open.
         Assert.True(_navigation.GoBack());
 
-        Assert.Equal([true, true, false, false, false, true, true, true], captured);
+        // Profiles -> Create -> Kit -> Profiles: the master password and then the Recovery Kit are never capturable.
+        _navigation.NavigateTo(new CreateProfileViewModel(_profiles.Repository, _navigation, TestProfiles.LowCost));
+        var create = Assert.IsType<CreateProfileViewModel>(_navigation.Current);
+        create.DisplayName = "Bob";
+        await create.CreateCommand.ExecuteAsync(
+            new NewMasterPassword(NewPassword.ToCharArray(), NewPassword.ToCharArray()));
+        var kit = Assert.IsType<RecoveryKitViewModel>(_navigation.Current);
+        kit.KitSaved = true;
+        kit.DoneCommand.Execute(null);
+        Assert.IsType<ProfilesViewModel>(_navigation.Current);
+
+        Assert.Equal([true, true, false, false, false, true, true, true, false, false, true], captured);
     }
 }

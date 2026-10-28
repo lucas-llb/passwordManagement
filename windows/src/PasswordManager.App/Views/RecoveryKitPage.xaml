@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="PasswordManager.App.Views.RecoveryKitPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Loaded="OnLoaded">
+
+    <!--  Shown once, right after the profile is created. No Back and no Escape: Concluir is the only way out.  -->
+    <ScrollViewer>
+        <Grid Padding="24">
+            <StackPanel
+                MaxWidth="480"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="16">
+                <TextBlock
+                    AutomationProperties.AutomationId="KitTitle"
+                    x:Uid="KitTitle"
+                    Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="KitExplanation"
+                    x:Uid="KitExplanation"
+                    TextWrapping="Wrap" />
+
+                <!--  Set from the view model in OnNavigatedTo and emptied in OnNavigatedFrom; not selectable, so not copied.  -->
+                <TextBlock
+                    x:Name="KitTextBlock"
+                    AutomationProperties.AutomationId="KitText"
+                    FontFamily="Consolas"
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="KitInstructions"
+                    x:Uid="KitInstructions"
+                    TextWrapping="Wrap" />
+                <CheckBox
+                    x:Name="KitSavedCheck"
+                    AutomationProperties.AutomationId="KitSavedCheck"
+                    x:Uid="KitSavedCheck"
+                    Checked="OnKitSavedChanged"
+                    Unchecked="OnKitSavedChanged" />
+                <Button
+                    AutomationProperties.AutomationId="KitDone"
+                    x:Uid="KitDone"
+                    Command="{x:Bind ViewModel.DoneCommand}"
+                    Style="{StaticResource AccentButtonStyle}" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>

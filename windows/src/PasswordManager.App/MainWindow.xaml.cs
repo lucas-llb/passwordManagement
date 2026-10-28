@@ -68,6 +68,9 @@ public sealed partial class MainWindow : Window
             case EntryDetailViewModel detail:
                 RootFrame.Navigate(typeof(EntryDetailPage), detail);
                 break;
+            case RecoveryKitViewModel kit:
+                RootFrame.Navigate(typeof(RecoveryKitPage), kit);
+                break;
             default:
                 throw new InvalidOperationException("No page is registered for the current ViewModel.");
         }
