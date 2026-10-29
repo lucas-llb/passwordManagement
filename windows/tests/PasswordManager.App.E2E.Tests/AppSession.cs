@@ -98,6 +98,60 @@ internal sealed class AppSession : IDisposable
     // Flips a CheckBox (or any toggle) through its TogglePattern, as a click or Space would.
     public void Toggle(string automationId) => WaitFor(automationId).Patterns.Toggle.Pattern.Toggle();
 
+    public bool IsToggled(string automationId) =>
+        WaitFor(automationId).Patterns.Toggle.Pattern.ToggleState.Value == ToggleState.On;
+
+    // Picks a ComboBox option through UI Automation, as a user does with the drop-down open: expand, select the option by
+    // its name, collapse. No click.
+    public void SelectOption(string comboId, string optionName)
+    {
+        var combo = WaitFor(comboId);
+        Expand(combo);
+        try
+        {
+            var option = Retry.WhileNull(
+                () => Options(combo).FirstOrDefault(o => o.Name == optionName),
+                Timeout,
+                TimeSpan.FromMilliseconds(100),
+                ignoreException: true).Result
+                ?? throw new InvalidOperationException($"Option '{optionName}' of '{comboId}' did not appear.");
+            option.Patterns.SelectionItem.Pattern.Select();
+        }
+        finally
+        {
+            Collapse(combo);
+        }
+    }
+
+    // The names of a ComboBox's options, in order; they exist only while the drop-down is open.
+    public string[] OptionNames(string comboId)
+    {
+        var combo = WaitFor(comboId);
+        Expand(combo);
+        try
+        {
+            // The drop-down builds its items as it opens: read until two reads in a row agree.
+            string[] previous = [];
+            string[] current = [];
+            var stable = Retry.WhileFalse(
+                () =>
+                {
+                    previous = current;
+                    current = [.. Options(combo).Select(o => o.Name)];
+                    return current.Length > 0 && current.SequenceEqual(previous);
+                },
+                Timeout,
+                TimeSpan.FromMilliseconds(100),
+                ignoreException: true).Success;
+            Assert.True(stable, $"The options of '{comboId}' did not settle.");
+            return current;
+        }
+        finally
+        {
+            Collapse(combo);
+        }
+    }
+
     public bool IsEnabled(string automationId) => WaitFor(automationId).IsEnabled;
 
     // Waits until the element is enabled (or disabled); a command's CanExecute reaches the button a moment later.
@@ -236,6 +290,37 @@ internal sealed class AppSession : IDisposable
         var items = Items(listId);
         Assert.True(items.Length == count, $"Expected {count} items in '{listId}', found {items.Length}.");
         return items;
+    }
+
+    // The name of a ComboBox's selected option, as its SelectionPattern reports it (a WinUI ComboBox has no ValuePattern).
+    public string? SelectedOption(string comboId) =>
+        WaitFor(comboId).Patterns.Selection.Pattern.Selection.Value.SingleOrDefault()?.Name;
+
+    // The options of an open ComboBox, looked up under the combo itself: the window also holds a second copy of each one,
+    // in the drop-down's popup.
+    private static AutomationElement[] Options(AutomationElement combo) =>
+        combo.FindAllChildren(cf => cf.ByControlType(ControlType.ListItem));
+
+    private static void Expand(AutomationElement combo)
+    {
+        var pattern = combo.Patterns.ExpandCollapse.Pattern;
+        pattern.Expand();
+        var expanded = Retry.WhileFalse(
+            () => pattern.ExpandCollapseState.Value == ExpandCollapseState.Expanded, Timeout, TimeSpan.FromMilliseconds(100)).Success;
+        Assert.True(expanded, "The drop-down did not open.");
+    }
+
+    private static void Collapse(AutomationElement combo)
+    {
+        var pattern = combo.Patterns.ExpandCollapse.Pattern;
+        if (pattern.ExpandCollapseState.Value != ExpandCollapseState.Collapsed)
+        {
+            pattern.Collapse();
+        }
+
+        var collapsed = Retry.WhileFalse(
+            () => pattern.ExpandCollapseState.Value == ExpandCollapseState.Collapsed, Timeout, TimeSpan.FromMilliseconds(100)).Success;
+        Assert.True(collapsed, "The drop-down did not close.");
     }
 
     public static string TextOf(AutomationElement item, string automationId) =>
