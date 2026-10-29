@@ -44,6 +44,9 @@ public sealed partial class EntryListViewModel : PageViewModel
     /// <summary>True when <see cref="Entries"/> is empty.</summary>
     public bool IsEmpty => Entries.Count == 0;
 
+    /// <summary>True until the vault is locked; <see cref="AutoLock"/> uses it to know whether a vault is open.</summary>
+    public bool IsOpen => _session.IsUnlocked;
+
     [RelayCommand]
     private void OpenEntry(VaultEntry entry)
     {
