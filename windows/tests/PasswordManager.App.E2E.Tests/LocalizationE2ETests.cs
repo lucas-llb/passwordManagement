@@ -84,9 +84,20 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "EntriesTitle");
         AssertNameFromResources(app, "EntriesLock");
         AssertNameFromResources(app, "EntriesList");
+        AssertNameFromResources(app, "EntriesSearch");
+        AssertNameFromResources(app, "EntriesFavoritesOnly");
+        AssertNameFromResources(app, "EntriesFolder");
         AssertEveryTextFromResourcesOrData(app, EntryTexts());
 
-        // Detail of the first entry
+        // A search that matches nothing shows the "no matches" text instead of the list items.
+        app.SetValue("EntriesSearch", "consulta-sem-resultado");
+        AssertNameFromResources(app, "EntriesNoMatches");
+        AssertEveryTextFromResourcesOrData(app, EntryTexts());
+
+        // Detail of the first entry; the query is cleared first so the item is there to open.
+        app.SetValue("EntriesSearch", string.Empty);
+        app.WaitGone("EntriesNoMatches");
+        items = app.WaitItems("EntriesList", SeededVault.Entries.Length);
         items[0].Patterns.Invoke.Pattern.Invoke();
         app.WaitFor("DetailTitle");
         app.WaitGone("EntriesList");
@@ -242,10 +253,12 @@ public sealed class LocalizationE2ETests
         }
     }
 
+    // The data of the list page: the titles and usernames of the items, and the folder names of the folder filter.
     private static IEnumerable<string> EntryTexts() =>
         SeededVault.Entries.SelectMany(entry => new[]
         {
             entry.GetProperty("title").GetString()!,
             entry.GetProperty("username").GetString()!,
+            entry.GetProperty("folder").GetString()!,
         });
 }

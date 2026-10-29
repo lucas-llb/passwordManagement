@@ -197,10 +197,13 @@ public sealed class AccessibilityE2ETests
         app.PressKey(VirtualKeyShort.UP);
         app.WaitFocus(EntryItem(0));
 
-        app.PressKey(VirtualKeyShort.TAB);
-        app.WaitFocus("EntriesLock");
-        app.PressKey(VirtualKeyShort.TAB);
-        app.WaitFocus(EntryItem(0));
+        // The list is the last stop, so Tab wraps to the first control: Lock, then the search and the two filters in
+        // document order, and back to the list.
+        foreach (var expected in new[] { "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly", "EntriesFolder", EntryItem(0) })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
 
         OpenEntryByKeyboard(app);
         AssertEveryFocusableElementIsNamed(app);

@@ -66,6 +66,24 @@
   <data name="EntriesLock.Content" xml:space="preserve">
     <value>Bloquear</value>
   </data>
+  <data name="EntriesSearch.Header" xml:space="preserve">
+    <value>Buscar</value>
+  </data>
+  <data name="EntriesSearch.PlaceholderText" xml:space="preserve">
+    <value>Título, usuário, URL ou pasta</value>
+  </data>
+  <data name="EntriesFavoritesOnly.Content" xml:space="preserve">
+    <value>Só favoritas</value>
+  </data>
+  <data name="EntriesFolder.Header" xml:space="preserve">
+    <value>Pasta</value>
+  </data>
+  <data name="EntriesFolderAll" xml:space="preserve">
+    <value>Todas as pastas</value>
+  </data>
+  <data name="EntriesNoMatches.Text" xml:space="preserve">
+    <value>Nenhuma entrada corresponde à busca.</value>
+  </data>
   <data name="DetailTitle.Header" xml:space="preserve">
     <value>Título</value>
   </data>
