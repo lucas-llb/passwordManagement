@@ -38,7 +38,8 @@ internal sealed class AppSession : IDisposable
 
     public nint Handle => Window.Properties.NativeWindowHandle.Value;
 
-    public static AppSession Launch(Action<string>? seed = null)
+    // The extra arguments go after --vaults-dir, for the other Debug switches (such as --idle-timeout-seconds).
+    public static AppSession Launch(Action<string>? seed = null, params string[] arguments)
     {
         Assert.SkipUnless(IsDebugBuild, "E2E tests run only in Debug: the --vaults-dir hook exists only in the Debug app.");
         var exe = Metadata("AppExePath");
@@ -53,6 +54,11 @@ internal sealed class AppSession : IDisposable
             var start = new ProcessStartInfo(exe);
             start.ArgumentList.Add("--vaults-dir");
             start.ArgumentList.Add(directory);
+            foreach (var argument in arguments)
+            {
+                start.ArgumentList.Add(argument);
+            }
+
             app = Application.Launch(start);
             automation = new UIA3Automation();
             var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30))
@@ -237,6 +243,155 @@ internal sealed class AppSession : IDisposable
             ?? throw new InvalidOperationException(automationId)).Name;
 
     public string ValueOf(string automationId) => WaitFor(automationId).Patterns.Value.Pattern.Value.Value;
+
+    // Posts the real WM_WTSSESSION_CHANGE to the app's top-level window, as the OS does for a session it registered
+    // for; the desktop itself is never locked (the test could not unlock it again).
+    public void PostSessionChange(nuint wtsEvent)
+    {
+        var posted = NativeMethods.PostMessageW(
+            Handle, NativeMethods.WM_WTSSESSION_CHANGE, wtsEvent, Process.GetCurrentProcess().SessionId);
+        Assert.True(posted, $"PostMessageW failed with error {Marshal.GetLastPInvokeError()}.");
+    }
+
+    public void Minimize()
+    {
+        NativeMethods.ShowWindow(Handle, NativeMethods.SW_MINIMIZE);
+        var minimized = Retry.WhileFalse(() => NativeMethods.IsIconic(Handle), Timeout, TimeSpan.FromMilliseconds(50)).Success;
+        Assert.True(minimized, "The app window did not minimize.");
+    }
+
+    public void Restore()
+    {
+        NativeMethods.ShowWindow(Handle, NativeMethods.SW_RESTORE);
+        var restored = Retry.WhileTrue(() => NativeMethods.IsIconic(Handle), Timeout, TimeSpan.FromMilliseconds(50)).Success;
+        Assert.True(restored, "The app window did not restore.");
+    }
+
+    // Moves the real cursor (no click) to a point inside the window's client area, offset from its centre, so the app
+    // gets pointer input.
+    public void MovePointerInside(int offset)
+    {
+        var rect = WindowRect();
+        MovePointerTo(((rect.Left + rect.Right) / 2) + offset, ((rect.Top + rect.Bottom) / 2) + offset);
+    }
+
+    // Moves the real cursor (no click) off the app window, so a cursor resting on it can neither count as activity nor
+    // be needed for it: an idle check then sees only what the test does.
+    public void ParkPointerOutside()
+    {
+        const int margin = 40;
+        var rect = WindowRect();
+        var screen = VirtualScreen();
+        (int X, int Y)[] candidates =
+        [
+            (rect.Left - margin, rect.Top + margin),
+            (rect.Right + margin, rect.Top + margin),
+            (rect.Left + margin, rect.Bottom + margin),
+            (rect.Left + margin, rect.Top - margin),
+            (screen.Left + 1, screen.Top + 1),
+            (screen.Right - 2, screen.Bottom - 2),
+        ];
+        foreach (var (x, y) in candidates)
+        {
+            var onScreen = x >= screen.Left && x < screen.Right && y >= screen.Top && y < screen.Bottom;
+            var offWindow = x < rect.Left || x >= rect.Right || y < rect.Top || y >= rect.Bottom;
+            if (onScreen && offWindow)
+            {
+                MovePointerTo(x, y);
+                return;
+            }
+        }
+
+        Assert.Fail("There is no screen point outside the app window to park the cursor on.");
+    }
+
+    // Which seeded entry values (title, username, password, URL, folder or notes; the empty ones are skipped) some element
+    // of the window holds, as its Name (a text) or its Value (a text box; a password box is never read), labelled by
+    // field and entry number so a failure never prints a value. Empty once nothing from the vault is on screen or in the
+    // automation tree. Line endings are compared as \n, since a text box keeps them as \r.
+    public string[] VisibleEntryFields()
+    {
+        string[] fields = ["title", "username", "password", "url", "folder", "notes"];
+        var labels = new Dictionary<string, string>(StringComparer.Ordinal);
+        var entries = SeededVault.Entries;
+        for (var index = 0; index < entries.Length; index++)
+        {
+            foreach (var field in fields)
+            {
+                var value = entries[index].GetProperty(field).GetString();
+                if (!string.IsNullOrEmpty(value))
+                {
+                    labels.TryAdd(value.ReplaceLineEndings("\n"), $"{field} #{index + 1}");
+                }
+            }
+        }
+
+        var found = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var element in Window.FindAllDescendants())
+        {
+            var name = element.Properties.Name.ValueOrDefault;
+            var value = element.Properties.IsPassword.ValueOrDefault
+                ? null
+                : element.Patterns.Value.PatternOrDefault?.Value.ValueOrDefault;
+            foreach (var text in new[] { name, value })
+            {
+                if (!string.IsNullOrEmpty(text) && labels.TryGetValue(text.ReplaceLineEndings("\n"), out var label))
+                {
+                    found.Add(label);
+                }
+            }
+        }
+
+        return [.. found];
+    }
+
+    public void AssertNoEntryVisible()
+    {
+        var visible = VisibleEntryFields();
+        Assert.True(visible.Length == 0, $"Entry values are still in the window: {string.Join(", ", visible)}.");
+    }
+
+    // An injected absolute move, as a real mouse sends: WinUI turns it into pointer events, which a SetCursorPos (what
+    // FlaUI's Mouse uses) does not reliably produce. The coordinates are physical pixels on the virtual desktop.
+    private static void MovePointerTo(int x, int y)
+    {
+        var screen = VirtualScreen();
+        INPUT[] input =
+        [
+            new()
+            {
+                Type = NativeMethods.INPUT_MOUSE,
+                Mouse = new MOUSEINPUT
+                {
+                    Dx = (int)((x - screen.Left) * 65535L / Math.Max(1, screen.Right - screen.Left - 1)),
+                    Dy = (int)((y - screen.Top) * 65535L / Math.Max(1, screen.Bottom - screen.Top - 1)),
+                    Flags = NativeMethods.MOUSEEVENTF_MOVE | NativeMethods.MOUSEEVENTF_ABSOLUTE | NativeMethods.MOUSEEVENTF_VIRTUALDESK,
+                },
+            },
+        ];
+        var sent = NativeMethods.SendInput(1, input, Marshal.SizeOf<INPUT>());
+        Assert.True(sent == 1, $"SendInput failed with error {Marshal.GetLastPInvokeError()}.");
+        Wait.UntilInputIsProcessed();
+    }
+
+    private static RECT VirtualScreen()
+    {
+        var left = NativeMethods.GetSystemMetrics(NativeMethods.SM_XVIRTUALSCREEN);
+        var top = NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN);
+        return new RECT
+        {
+            Left = left,
+            Top = top,
+            Right = left + NativeMethods.GetSystemMetrics(NativeMethods.SM_CXVIRTUALSCREEN),
+            Bottom = top + NativeMethods.GetSystemMetrics(NativeMethods.SM_CYVIRTUALSCREEN),
+        };
+    }
+
+    private RECT WindowRect()
+    {
+        Assert.True(NativeMethods.GetWindowRect(Handle, out var rect), $"GetWindowRect failed with error {Marshal.GetLastPInvokeError()}.");
+        return rect;
+    }
 
     public void Dispose() => Cleanup(_app, _automation, VaultsDirectory);
 

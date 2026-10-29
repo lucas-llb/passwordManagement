@@ -104,6 +104,8 @@ public sealed class LocalizationGuardTests
             throw new InvalidOperationException("Developer message.");
             throw new ArgumentException($"Bad value {value}.", nameof(value));
             var index = Array.IndexOf(arguments, "--vaults-dir");
+            var idle = Array.IndexOf(arguments, "--idle-timeout-seconds");
+            var minimize = arguments.Contains("--lock-on-minimize");
             [LibraryImport("user32.dll", SetLastError = true)]
             [DllImport("user32.dll", EntryPoint = "SetWindowDisplayAffinity")]
             // "comment"
@@ -114,6 +116,15 @@ public sealed class LocalizationGuardTests
             """;
 
         Assert.Empty(LocalizationGuard.FindCodeLiterals(source));
+    }
+
+    [Theory]
+    [InlineData("""var minimize = arguments.Contains("--lock-on-minimize2");""")]
+    [InlineData("""var idle = Array.IndexOf(arguments, "--idle-timeout");""")]
+    [InlineData("""var index = Array.IndexOf(arguments, " --vaults-dir");""")]
+    public void FindCodeLiterals_NearMissOfADebugSwitch_IsReported(string source)
+    {
+        Assert.Single(LocalizationGuard.FindCodeLiterals(source));
     }
 
     [Fact]

@@ -9,9 +9,14 @@ namespace PasswordManager.App.E2E.Tests.Localization;
 internal static partial class LocalizationGuard
 {
     private const string GetStringCall = "GetString(";
-    private const string VaultsDirectorySwitch = "--vaults-dir";
 
     private static readonly XNamespace XamlNamespace = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+    // The Debug-only command-line switches the E2E tests pass to the app. A switch name is not UI text; matched exactly.
+    private static readonly HashSet<string> DebugSwitches = new(StringComparer.Ordinal)
+    {
+        "--vaults-dir", "--idle-timeout-seconds", "--lock-on-minimize",
+    };
 
     // Properties that put text on screen or in front of a screen reader. In XAML their value must be a binding or come from an x:Uid, never a literal.
     private static readonly HashSet<string> TextAttributes = new(StringComparer.Ordinal)
@@ -184,7 +189,7 @@ internal static partial class LocalizationGuard
         FollowsGetString(source, literal.Start)
         || IsInExceptionConstructor(source, literal.Start)
         || IsInNativeImportAttribute(source, literal.Start)
-        || string.Equals(source[literal.ContentStart..literal.ContentEnd], VaultsDirectorySwitch, StringComparison.Ordinal);
+        || DebugSwitches.Contains(source[literal.ContentStart..literal.ContentEnd]);
 
     // The code right before the literal, ignoring whitespace, is "GetString(".
     private static bool FollowsGetString(string source, int literalStart)

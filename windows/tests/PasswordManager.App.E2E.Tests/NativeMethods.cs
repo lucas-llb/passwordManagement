@@ -7,8 +7,9 @@ using System.Runtime.InteropServices;
 namespace PasswordManager.App.E2E.Tests;
 
 // The few Win32 calls the E2E tests need and FlaUI does not offer: the foreground check that guards every keystroke,
-// the sequence that brings the app window to the front, the settings broadcast of the theme test, and the display
-// affinity, window rect and window move of the capture protection test.
+// the sequence that brings the app window to the front, the settings broadcast of the theme test, the display
+// affinity, window rect and window move of the capture protection test, and the session message, minimize, restore
+// and injected mouse move of the auto-lock test.
 internal static partial class NativeMethods
 {
     public const nint HWND_BROADCAST = 0xFFFF;
@@ -21,6 +22,17 @@ internal static partial class NativeMethods
     public const uint SWP_NOACTIVATE = 0x10;
     public const int SM_XVIRTUALSCREEN = 76;
     public const int SM_CXVIRTUALSCREEN = 78;
+    public const int SM_YVIRTUALSCREEN = 77;
+    public const int SM_CYVIRTUALSCREEN = 79;
+    public const uint WM_WTSSESSION_CHANGE = 0x02B1;
+    public const nuint WTS_SESSION_LOCK = 0x7;
+    public const nuint WTS_SESSION_UNLOCK = 0x8;
+    public const int SW_MINIMIZE = 6;
+    public const int SW_RESTORE = 9;
+    public const uint INPUT_MOUSE = 0;
+    public const uint MOUSEEVENTF_MOVE = 0x0001;
+    public const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;
+    public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
 
     [LibraryImport("user32.dll")]
     public static partial nint GetForegroundWindow();
@@ -62,6 +74,21 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll")]
     public static partial int GetSystemMetrics(int index);
 
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool PostMessageW(nint hWnd, uint msg, nuint wParam, nint lParam);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ShowWindow(nint hWnd, int command);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsIconic(nint hWnd);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    public static partial uint SendInput(uint count, [In] INPUT[] inputs, int size);
+
     // A plain SetForegroundWindow is refused when the calling process does not own the foreground; attaching this
     // thread's input to the foreground window's thread lifts that restriction for the duration of the call.
     public static void BringToForeground(nint hWnd)
@@ -94,4 +121,23 @@ internal struct RECT
     public int Top;
     public int Right;
     public int Bottom;
+}
+
+// One SendInput record; the union is declared as its mouse member, the largest of the three.
+[StructLayout(LayoutKind.Sequential)]
+internal struct INPUT
+{
+    public uint Type;
+    public MOUSEINPUT Mouse;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct MOUSEINPUT
+{
+    public int Dx;
+    public int Dy;
+    public uint MouseData;
+    public uint Flags;
+    public uint Time;
+    public nint ExtraInfo;
 }

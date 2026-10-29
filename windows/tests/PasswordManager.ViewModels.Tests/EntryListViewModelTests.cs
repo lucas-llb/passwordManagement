@@ -79,6 +79,24 @@ public sealed class EntryListViewModelTests : IDisposable
     }
 
     [Fact]
+    public void IsOpen_AfterTheOpen_IsTrue()
+    {
+        var (_, _, list) = OpenList(_first);
+
+        Assert.True(list.IsOpen);
+    }
+
+    [Fact]
+    public void IsOpen_AfterLock_IsFalse()
+    {
+        var (_, _, list) = OpenList(_first);
+
+        list.LockCommand.Execute(null);
+
+        Assert.False(list.IsOpen);
+    }
+
+    [Fact]
     public void Lock_ShowsTheUnlockPageOfTheSameProfile()
     {
         var (profile, _, list) = OpenList(_first);
