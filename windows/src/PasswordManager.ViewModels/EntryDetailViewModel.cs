@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PasswordManager.Core.Passwords;
 using PasswordManager.Core.Vault;
 using PasswordManager.ViewModels.Navigation;
 
@@ -45,6 +46,10 @@ public sealed partial class EntryDetailViewModel : PageViewModel
         Url = string.Empty;
         Notes = string.Empty;
         Folder = string.Empty;
+        GeneratorLength = PasswordGenerator.DefaultLength;
+        GeneratorUppercase = true;
+        GeneratorDigits = true;
+        GeneratorSymbols = true;
         LoadDraft();
         _loaded = true;
         UpdateDirty();
@@ -125,6 +130,61 @@ public sealed partial class EntryDetailViewModel : PageViewModel
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConfirmDeleteCommand))]
     public partial bool IsDeletePending { get; private set; }
+
+    /// <summary>
+    /// The length the generator uses. A <see cref="double"/> because the page's <c>NumberBox.Value</c> is one, and it is
+    /// NaN when the box is cleared; <see cref="GeneratePasswordCommand"/> rounds, clamps and writes the length it used
+    /// back here. Not part of the entry: changing it never makes the draft dirty. Each detail page starts at
+    /// <see cref="PasswordGenerator.DefaultLength"/>.
+    /// </summary>
+    [ObservableProperty]
+    public partial double GeneratorLength { get; set; }
+
+    /// <summary>Whether the generator uses uppercase letters. On by default; not part of the entry.</summary>
+    [ObservableProperty]
+    public partial bool GeneratorUppercase { get; set; }
+
+    /// <summary>Whether the generator uses digits. On by default; not part of the entry.</summary>
+    [ObservableProperty]
+    public partial bool GeneratorDigits { get; set; }
+
+    /// <summary>Whether the generator uses symbols. On by default; not part of the entry.</summary>
+    [ObservableProperty]
+    public partial bool GeneratorSymbols { get; set; }
+
+    // Instance members, not static, so the page can x:Bind them.
+#pragma warning disable CA1822
+    /// <summary>The shortest generated password, for the length box.</summary>
+    public double GeneratorMinLength => PasswordGenerator.MinLength;
+
+    /// <summary>The longest generated password, for the length box.</summary>
+    public double GeneratorMaxLength => PasswordGenerator.MaxLength;
+#pragma warning restore CA1822
+
+    /// <summary>
+    /// Puts a new random password into the draft, overwriting the current one without asking (Discard restores it). The
+    /// length is <see cref="GeneratorLength"/> rounded and clamped to the allowed range (NaN means the default) and is
+    /// written back; lowercase letters are always used, the other sets follow the three flags. Does not change
+    /// <see cref="IsPasswordVisible"/>.
+    /// </summary>
+    [RelayCommand]
+    private void GeneratePassword()
+    {
+        var length = double.IsNaN(GeneratorLength)
+            ? PasswordGenerator.DefaultLength
+            : (int)Math.Clamp(Math.Round(GeneratorLength), PasswordGenerator.MinLength, PasswordGenerator.MaxLength);
+        GeneratorLength = length;
+
+        var generated = PasswordGenerator.Generate(length, GeneratorUppercase, GeneratorDigits, GeneratorSymbols);
+        try
+        {
+            Password = new string(generated);
+        }
+        finally
+        {
+            Array.Clear(generated);
+        }
+    }
 
     /// <summary>
     /// Writes the draft: an edit keeps the <c>Id</c>, <c>CreatedAt</c> and every other field of the saved record; a new

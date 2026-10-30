@@ -1,6 +1,7 @@
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.WindowsAPI;
+using PasswordManager.Core.Passwords;
 
 namespace PasswordManager.App.E2E.Tests;
 
@@ -209,15 +210,25 @@ public sealed class AccessibilityE2ETests
         AssertEveryFocusableElementIsNamed(app);
 
         // A clean, saved entry: Save and Discard are disabled and so skipped. Back sits first in the document, so the
-        // cycle runs through the form, Delete, then wraps to Back and on to the title again.
+        // cycle runs through the form (the generator sits below the password row), Delete, then wraps to Back and on to
+        // the title again. The length slider takes the focus itself and announces its bounds and value through its range
+        // value, so a screen reader hears the default and the limits without any text of WinUI's in its name.
         foreach (var expected in new[]
         {
-            "DetailUsername", "DetailPassword", "DetailShowPassword", "DetailUrl", "DetailFolder", "DetailNotes",
-            "DetailFavorite", "DetailDelete", "DetailBack", "DetailTitle",
+            "DetailUsername", "DetailPassword", "DetailShowPassword", "DetailGenerate", "DetailGeneratorLength",
+            "DetailGeneratorUppercase", "DetailGeneratorDigits", "DetailGeneratorSymbols", "DetailUrl", "DetailFolder",
+            "DetailNotes", "DetailFavorite", "DetailDelete", "DetailBack", "DetailTitle",
         })
         {
             app.PressKey(VirtualKeyShort.TAB);
             app.WaitFocus(expected);
+            if (expected == "DetailGeneratorLength")
+            {
+                var range = app.Focused()!.Patterns.RangeValue.Pattern;
+                Assert.Equal(PasswordGenerator.MinLength, range.Minimum.Value);
+                Assert.Equal(PasswordGenerator.MaxLength, range.Maximum.Value);
+                Assert.Equal(PasswordGenerator.DefaultLength, range.Value.Value);
+            }
         }
 
         // Enter on the focused back button.

@@ -2,6 +2,7 @@ using System.Globalization;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using PasswordManager.App.E2E.Tests.Localization;
+using PasswordManager.Core.Passwords;
 
 namespace PasswordManager.App.E2E.Tests;
 
@@ -10,6 +11,10 @@ public sealed class LocalizationE2ETests
 {
     private static readonly ControlType[] TextControlTypes =
         [ControlType.Text, ControlType.Button, ControlType.Edit, ControlType.List, ControlType.ListItem];
+
+    // The number beside the generator's length slider is the slider's value, data rather than text: the default length.
+    private static readonly string GeneratorLengthText =
+        PasswordGenerator.DefaultLength.ToString(CultureInfo.InvariantCulture);
 
     [Fact]
     public void EmptyFolder_ProfileTextsComeFromResources()
@@ -111,6 +116,11 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "DetailNotes");
         AssertNameFromResources(app, "DetailPassword");
         AssertNameFromResources(app, "DetailShowPassword");
+        AssertNameFromResources(app, "DetailGenerate");
+        AssertNameFromResources(app, "DetailGeneratorLength");
+        AssertNameFromResources(app, "DetailGeneratorUppercase");
+        AssertNameFromResources(app, "DetailGeneratorDigits");
+        AssertNameFromResources(app, "DetailGeneratorSymbols");
         AssertNameFromResources(app, "DetailFavorite");
         AssertNameFromResources(app, "DetailSave");
         AssertNameFromResources(app, "DetailDiscard");
@@ -124,14 +134,15 @@ public sealed class LocalizationE2ETests
         Assert.Equal(updated, app.WaitFor("DetailUpdatedAt").Name);
         Assert.Null(app.Find("DetailTitleRequired"));
         Assert.Null(app.Find("DetailSaveError"));
-        AssertEveryTextFromResourcesOrData(app, created, updated);
+        Assert.Equal(GeneratorLengthText, app.WaitFor("DetailGeneratorLengthValue").Name);
+        AssertEveryTextFromResourcesOrData(app, created, updated, GeneratorLengthText);
 
         // The password box is swapped for a text box while the password is shown; both are named "Senha".
         Assert.Null(app.Find("DetailPasswordText"));
         app.Toggle("DetailShowPassword");
         app.WaitGone("DetailPassword");
         AssertNameFromResources(app, "DetailPasswordText");
-        AssertEveryTextFromResourcesOrData(app, created, updated);
+        AssertEveryTextFromResourcesOrData(app, created, updated, GeneratorLengthText);
         app.Toggle("DetailShowPassword");
         app.WaitGone("DetailPasswordText");
         app.WaitFor("DetailPassword");
@@ -141,7 +152,7 @@ public sealed class LocalizationE2ETests
         app.WaitDialog("DetailDeleteDialog");
         AssertNameFromResources(app, "DetailDeleteDialog");
         AssertNameFromResources(app, "DetailDeleteWarning");
-        AssertEveryTextFromResourcesOrData(app, created, updated);
+        AssertEveryTextFromResourcesOrData(app, created, updated, GeneratorLengthText);
         app.InvokeInDialog("DetailDeleteDialog", "CloseButton");
         app.WaitDialogGone("DetailDeleteDialog");
 
@@ -156,7 +167,7 @@ public sealed class LocalizationE2ETests
         Assert.Null(app.Find("DetailCreatedAt"));
         Assert.Null(app.Find("DetailUpdatedAt"));
         Assert.Null(app.Find("DetailDelete"));
-        AssertEveryTextFromResourcesOrData(app);
+        AssertEveryTextFromResourcesOrData(app, GeneratorLengthText);
     }
 
     // A seeded entry's timestamp (the vector stores them as ISO 8601 UTC).
