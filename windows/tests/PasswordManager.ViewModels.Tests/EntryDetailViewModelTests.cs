@@ -1,3 +1,4 @@
+using PasswordManager.Core.Passwords;
 using PasswordManager.Core.Profiles;
 using PasswordManager.Core.Vault;
 using PasswordManager.ViewModels.Navigation;
@@ -493,6 +494,168 @@ public sealed class EntryDetailViewModelTests : IDisposable
         Assert.True(detail.IsPasswordHidden);
         Assert.Contains(nameof(EntryDetailViewModel.IsPasswordHidden), raised);
         Assert.False(detail.IsDirty);
+    }
+
+    // Password generator
+
+    private static bool HasEveryClass(string password) =>
+        password.Any(c => PasswordGenerator.LowercaseLetters.Contains(c))
+        && password.Any(c => PasswordGenerator.UppercaseLetters.Contains(c))
+        && password.Any(c => PasswordGenerator.DigitCharacters.Contains(c))
+        && password.Any(c => PasswordGenerator.SymbolCharacters.Contains(c));
+
+    [Fact]
+    public void Generator_Defaults_AreTwentyWithEveryOptionOnAndNeverDirty()
+    {
+        var list = OpenList(_mail);
+        var detail = Open(list, _mail);
+
+        Assert.Equal(20, detail.GeneratorLength);
+        Assert.True(detail.GeneratorUppercase);
+        Assert.True(detail.GeneratorDigits);
+        Assert.True(detail.GeneratorSymbols);
+        Assert.Equal(8, detail.GeneratorMinLength);
+        Assert.Equal(128, detail.GeneratorMaxLength);
+        Assert.True(detail.GeneratePasswordCommand.CanExecute(null));
+
+        detail.GeneratorLength = 32;
+        detail.GeneratorUppercase = false;
+        detail.GeneratorDigits = false;
+        detail.GeneratorSymbols = false;
+
+        Assert.False(detail.IsDirty);
+        Assert.False(detail.SaveCommand.CanExecute(null));
+        Assert.True(detail.GoBackCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void GeneratePassword_SavedEntry_ReplacesTheDraftPasswordAndKeepsItHidden()
+    {
+        var list = OpenList(_mail);
+        var detail = Open(list, _mail);
+
+        detail.GeneratePasswordCommand.Execute(null);
+
+        Assert.Equal(20, detail.Password.Length);
+        Assert.True(HasEveryClass(detail.Password));
+        Assert.NotEqual(_mail.Password, detail.Password);
+        Assert.True(detail.IsDirty);
+        Assert.False(detail.IsPasswordVisible);
+        Assert.True(detail.IsPasswordHidden);
+        Assert.True(detail.SaveCommand.CanExecute(null));
+        Assert.False(detail.GoBackCommand.CanExecute(null));
+        Assert.Equal(_mail, ReadDisk()[0]);
+    }
+
+    [Fact]
+    public void GeneratePassword_ThenDiscard_RestoresTheSavedPassword()
+    {
+        var list = OpenList(_mail);
+        var detail = Open(list, _mail);
+        detail.GeneratePasswordCommand.Execute(null);
+
+        detail.DiscardCommand.Execute(null);
+
+        Assert.Equal(_mail.Password, detail.Password);
+        Assert.False(detail.IsDirty);
+        Assert.True(detail.GoBackCommand.CanExecute(null));
+        Assert.Equal(_mail, ReadDisk()[0]);
+    }
+
+    [Fact]
+    public void GeneratePassword_EveryOptionOff_GivesOnlyLowercaseLetters()
+    {
+        var list = OpenList(_mail);
+        var detail = Open(list, _mail);
+        detail.GeneratorLength = 32;
+        detail.GeneratorUppercase = false;
+        detail.GeneratorDigits = false;
+        detail.GeneratorSymbols = false;
+
+        detail.GeneratePasswordCommand.Execute(null);
+
+        Assert.Equal(32, detail.Password.Length);
+        Assert.All(detail.Password, c => Assert.Contains(c, PasswordGenerator.LowercaseLetters));
+    }
+
+    public static TheoryData<double, int> LengthClamps => new()
+    {
+        { 3, 8 },
+        { 500, 128 },
+        { double.NaN, 20 },
+        { 20.6, 21 },
+        { double.PositiveInfinity, 128 },
+        { double.NegativeInfinity, 8 },
+    };
+
+    [Theory]
+    [MemberData(nameof(LengthClamps))]
+    public void GeneratePassword_LengthOutOfRange_IsRoundedClampedAndWrittenBack(double requested, int expected)
+    {
+        var list = OpenList(_mail);
+        var detail = Open(list, _mail);
+        detail.GeneratorLength = requested;
+
+        detail.GeneratePasswordCommand.Execute(null);
+
+        Assert.Equal(expected, detail.Password.Length);
+        Assert.Equal(expected, detail.GeneratorLength);
+    }
+
+    [Fact]
+    public void GeneratePassword_NewEntry_IsSavedToDiskAsTheDraft()
+    {
+        var list = OpenList(_mail);
+        var detail = OpenNew(list);
+
+        detail.GeneratePasswordCommand.Execute(null);
+        detail.Title = "Novo";
+        var generated = detail.Password;
+        detail.SaveCommand.Execute(null);
+
+        var disk = ReadDisk();
+        Assert.Equal(2, disk.Count);
+        Assert.Equal(generated, disk[1].Password);
+        Assert.Equal(20, disk[1].Password.Length);
+        Assert.True(HasEveryClass(disk[1].Password));
+        Assert.False(detail.IsDirty);
+    }
+
+    [Fact]
+    public void GeneratePassword_NewEntryWithoutTitle_StaysUnsavable()
+    {
+        var list = OpenList(_mail);
+        var detail = OpenNew(list);
+
+        detail.GeneratePasswordCommand.Execute(null);
+
+        Assert.True(detail.IsDirty);
+        Assert.False(detail.SaveCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void GeneratePassword_Twice_GivesDifferentPasswords()
+    {
+        var list = OpenList(_mail);
+        var detail = Open(list, _mail);
+
+        detail.GeneratePasswordCommand.Execute(null);
+        var first = detail.Password;
+        detail.GeneratePasswordCommand.Execute(null);
+
+        Assert.NotEqual(first, detail.Password);
+    }
+
+    [Fact]
+    public void ToString_AfterGenerate_IsOnlyTheTypeName()
+    {
+        var list = OpenList(_mail);
+        var detail = Open(list, _mail);
+
+        detail.GeneratePasswordCommand.Execute(null);
+
+        Assert.Equal(nameof(EntryDetailViewModel), detail.ToString());
+        Assert.DoesNotContain(detail.Password, detail.ToString(), StringComparison.Ordinal);
     }
 
     // Save failure

@@ -111,6 +111,21 @@
   <data name="DetailShowPassword.Content" xml:space="preserve">
     <value>Mostrar senha</value>
   </data>
+  <data name="DetailGenerate.Content" xml:space="preserve">
+    <value>Gerar senha</value>
+  </data>
+  <data name="DetailGeneratorLength.Header" xml:space="preserve">
+    <value>Tamanho</value>
+  </data>
+  <data name="DetailGeneratorUppercase.Content" xml:space="preserve">
+    <value>Maiúsculas (A–Z)</value>
+  </data>
+  <data name="DetailGeneratorDigits.Content" xml:space="preserve">
+    <value>Números (0–9)</value>
+  </data>
+  <data name="DetailGeneratorSymbols.Content" xml:space="preserve">
+    <value>Símbolos (!#$…)</value>
+  </data>
   <data name="DetailFavorite.Content" xml:space="preserve">
     <value>Favorita</value>
   </data>

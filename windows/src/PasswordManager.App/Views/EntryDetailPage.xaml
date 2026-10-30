@@ -74,6 +74,60 @@
                         IsChecked="{x:Bind ViewModel.IsPasswordVisible, Mode=TwoWay}" />
                 </Grid>
 
+                <!--
+                    The generator writes a new password into the draft (hidden stays hidden) and keeps the focus on its button.
+                    The options are not part of the entry, so they never make the draft dirty.
+                    The length is a Slider, not a NumberBox: a NumberBox with bounds appends WinUI's own "Minimum"/"Maximum"
+                    texts, in the system language, to the name of its text box. The Slider is named from its header alone and
+                    reports the bounds through its range value; the number beside it is the same value, shown as data. Value
+                    comes first so it is set while the default range still holds 20, and the bounds then never coerce it.
+                -->
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        AutomationProperties.AutomationId="DetailGenerate"
+                        x:Uid="DetailGenerate"
+                        VerticalAlignment="Bottom"
+                        Command="{x:Bind ViewModel.GeneratePasswordCommand}" />
+                    <Slider
+                        Grid.Column="1"
+                        AutomationProperties.AutomationId="DetailGeneratorLength"
+                        x:Uid="DetailGeneratorLength"
+                        Value="{x:Bind ViewModel.GeneratorLength, Mode=TwoWay}"
+                        IsThumbToolTipEnabled="False"
+                        LargeChange="8"
+                        Maximum="{x:Bind ViewModel.GeneratorMaxLength, Mode=OneTime}"
+                        Minimum="{x:Bind ViewModel.GeneratorMinLength, Mode=OneTime}"
+                        SmallChange="1"
+                        StepFrequency="1" />
+                    <TextBlock
+                        Grid.Column="2"
+                        MinWidth="32"
+                        Margin="0,0,0,8"
+                        VerticalAlignment="Bottom"
+                        AutomationProperties.AutomationId="DetailGeneratorLengthValue"
+                        Text="{x:Bind ViewModel.GeneratorLength, Mode=OneWay}"
+                        TextAlignment="Right" />
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <CheckBox
+                        AutomationProperties.AutomationId="DetailGeneratorUppercase"
+                        x:Uid="DetailGeneratorUppercase"
+                        IsChecked="{x:Bind ViewModel.GeneratorUppercase, Mode=TwoWay}" />
+                    <CheckBox
+                        AutomationProperties.AutomationId="DetailGeneratorDigits"
+                        x:Uid="DetailGeneratorDigits"
+                        IsChecked="{x:Bind ViewModel.GeneratorDigits, Mode=TwoWay}" />
+                    <CheckBox
+                        AutomationProperties.AutomationId="DetailGeneratorSymbols"
+                        x:Uid="DetailGeneratorSymbols"
+                        IsChecked="{x:Bind ViewModel.GeneratorSymbols, Mode=TwoWay}" />
+                </StackPanel>
+
                 <TextBox
                     AutomationProperties.AutomationId="DetailUrl"
                     x:Uid="DetailUrl"

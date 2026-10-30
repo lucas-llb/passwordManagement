@@ -329,6 +329,13 @@ internal sealed class AppSession : IDisposable
 
     public string ValueOf(string automationId) => WaitFor(automationId).Patterns.Value.Pattern.Value.Value;
 
+    // Sets a Slider (or any range control) through its RangeValuePattern, as a screen reader does. The control refuses a
+    // value outside its bounds: UI Automation reports that as an ArgumentException and the value stays as it was.
+    public void SetRange(string automationId, double value) =>
+        WaitFor(automationId).Patterns.RangeValue.Pattern.SetValue(value);
+
+    public double RangeOf(string automationId) => WaitFor(automationId).Patterns.RangeValue.Pattern.Value.Value;
+
     // Posts the real WM_WTSSESSION_CHANGE to the app's top-level window, as the OS does for a session it registered
     // for; the desktop itself is never locked (the test could not unlock it again).
     public void PostSessionChange(nuint wtsEvent)
