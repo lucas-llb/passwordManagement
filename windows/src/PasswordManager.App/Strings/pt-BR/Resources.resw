@@ -66,6 +66,9 @@
   <data name="EntriesLock.Content" xml:space="preserve">
     <value>Bloquear</value>
   </data>
+  <data name="EntriesNew.Content" xml:space="preserve">
+    <value>Nova entrada</value>
+  </data>
   <data name="EntriesSearch.Header" xml:space="preserve">
     <value>Buscar</value>
   </data>
@@ -98,6 +101,54 @@
   </data>
   <data name="DetailNotes.Header" xml:space="preserve">
     <value>Notas</value>
+  </data>
+  <data name="DetailPassword.Header" xml:space="preserve">
+    <value>Senha</value>
+  </data>
+  <data name="DetailPasswordText.Header" xml:space="preserve">
+    <value>Senha</value>
+  </data>
+  <data name="DetailShowPassword.Content" xml:space="preserve">
+    <value>Mostrar senha</value>
+  </data>
+  <data name="DetailFavorite.Content" xml:space="preserve">
+    <value>Favorita</value>
+  </data>
+  <data name="DetailSave.Content" xml:space="preserve">
+    <value>Salvar</value>
+  </data>
+  <data name="DetailDiscard.Content" xml:space="preserve">
+    <value>Descartar alterações</value>
+  </data>
+  <data name="DetailDelete.Content" xml:space="preserve">
+    <value>Excluir</value>
+  </data>
+  <data name="DetailTitleRequired.Text" xml:space="preserve">
+    <value>O título é obrigatório.</value>
+  </data>
+  <data name="DetailSaveError.Text" xml:space="preserve">
+    <value>Não foi possível salvar. O cofre não foi alterado.</value>
+  </data>
+  <data name="DetailDeleteDialog.Title" xml:space="preserve">
+    <value>Excluir entrada?</value>
+  </data>
+  <data name="DetailDeleteDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Excluir</value>
+  </data>
+  <data name="DetailDeleteDialog.CloseButtonText" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="DetailDeleteDialog.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Excluir entrada?</value>
+  </data>
+  <data name="DetailDeleteWarning.Text" xml:space="preserve">
+    <value>Esta entrada será apagada do cofre. Isso não pode ser desfeito.</value>
+  </data>
+  <data name="DetailCreatedAt" xml:space="preserve">
+    <value>Criada em {0:g}</value>
+  </data>
+  <data name="DetailUpdatedAt" xml:space="preserve">
+    <value>Alterada em {0:g}</value>
   </data>
   <data name="ProfilesCreate.Content" xml:space="preserve">
     <value>Novo perfil</value>

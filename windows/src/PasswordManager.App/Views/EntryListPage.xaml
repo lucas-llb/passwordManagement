@@ -23,12 +23,21 @@
                 AutomationProperties.AutomationId="EntriesTitle"
                 x:Uid="EntriesTitle"
                 Style="{StaticResource TitleTextBlockStyle}" />
-            <Button
-                x:Name="LockButton"
+            <StackPanel
                 Grid.Column="1"
-                AutomationProperties.AutomationId="EntriesLock"
-                x:Uid="EntriesLock"
-                Command="{x:Bind ViewModel.LockCommand}" />
+                Orientation="Horizontal"
+                Spacing="12">
+                <Button
+                    x:Name="NewEntryButton"
+                    AutomationProperties.AutomationId="EntriesNew"
+                    x:Uid="EntriesNew"
+                    Command="{x:Bind ViewModel.NewEntryCommand}"
+                    Style="{StaticResource AccentButtonStyle}" />
+                <Button
+                    AutomationProperties.AutomationId="EntriesLock"
+                    x:Uid="EntriesLock"
+                    Command="{x:Bind ViewModel.LockCommand}" />
+            </StackPanel>
         </Grid>
 
         <!--  Search and filters. They live on the view model, so they survive the detail page; the Tab order follows this order.  -->

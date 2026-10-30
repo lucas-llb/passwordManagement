@@ -1,3 +1,4 @@
+using System.Globalization;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using PasswordManager.App.E2E.Tests.Localization;
@@ -82,6 +83,7 @@ public sealed class LocalizationE2ETests
         var items = app.Items("EntriesList");
         Assert.Equal(SeededVault.Entries.Length, items.Length);
         AssertNameFromResources(app, "EntriesTitle");
+        AssertNameFromResources(app, "EntriesNew");
         AssertNameFromResources(app, "EntriesLock");
         AssertNameFromResources(app, "EntriesList");
         AssertNameFromResources(app, "EntriesSearch");
@@ -107,8 +109,62 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "DetailUrl");
         AssertNameFromResources(app, "DetailFolder");
         AssertNameFromResources(app, "DetailNotes");
+        AssertNameFromResources(app, "DetailPassword");
+        AssertNameFromResources(app, "DetailShowPassword");
+        AssertNameFromResources(app, "DetailFavorite");
+        AssertNameFromResources(app, "DetailSave");
+        AssertNameFromResources(app, "DetailDiscard");
+        AssertNameFromResources(app, "DetailDelete");
+
+        // The two dates are the resw formats filled with the entry's timestamps in local time: data of the vault, not
+        // fixed texts. A saved entry shows both, and no message.
+        var created = AppResources.Format("DetailCreatedAt", DateOf(0, "createdAt").LocalDateTime);
+        var updated = AppResources.Format("DetailUpdatedAt", DateOf(0, "updatedAt").LocalDateTime);
+        Assert.Equal(created, app.WaitFor("DetailCreatedAt").Name);
+        Assert.Equal(updated, app.WaitFor("DetailUpdatedAt").Name);
+        Assert.Null(app.Find("DetailTitleRequired"));
+        Assert.Null(app.Find("DetailSaveError"));
+        AssertEveryTextFromResourcesOrData(app, created, updated);
+
+        // The password box is swapped for a text box while the password is shown; both are named "Senha".
+        Assert.Null(app.Find("DetailPasswordText"));
+        app.Toggle("DetailShowPassword");
+        app.WaitGone("DetailPassword");
+        AssertNameFromResources(app, "DetailPasswordText");
+        AssertEveryTextFromResourcesOrData(app, created, updated);
+        app.Toggle("DetailShowPassword");
+        app.WaitGone("DetailPasswordText");
+        app.WaitFor("DetailPassword");
+
+        // The delete confirmation, then cancelled.
+        app.Invoke("DetailDelete");
+        app.WaitDialog("DetailDeleteDialog");
+        AssertNameFromResources(app, "DetailDeleteDialog");
+        AssertNameFromResources(app, "DetailDeleteWarning");
+        AssertEveryTextFromResourcesOrData(app, created, updated);
+        app.InvokeInDialog("DetailDeleteDialog", "CloseButton");
+        app.WaitDialogGone("DetailDeleteDialog");
+
+        // A new entry has no dates and no delete, and asks for the title.
+        app.Invoke("DetailBack");
+        app.WaitFor("EntriesList");
+        app.WaitGone("DetailTitle");
+        app.Invoke("EntriesNew");
+        app.WaitFor("DetailTitle");
+        app.WaitGone("EntriesList");
+        AssertNameFromResources(app, "DetailTitleRequired");
+        Assert.Null(app.Find("DetailCreatedAt"));
+        Assert.Null(app.Find("DetailUpdatedAt"));
+        Assert.Null(app.Find("DetailDelete"));
         AssertEveryTextFromResourcesOrData(app);
     }
+
+    // A seeded entry's timestamp (the vector stores them as ISO 8601 UTC).
+    private static DateTimeOffset DateOf(int entry, string field) =>
+        DateTimeOffset.Parse(
+            SeededVault.Entries[entry].GetProperty(field).GetString()!,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal);
 
     [Fact]
     public void CreatePage_TextsComeFromResources()

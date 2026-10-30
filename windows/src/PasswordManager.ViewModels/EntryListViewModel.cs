@@ -15,8 +15,9 @@ public sealed partial class EntryListViewModel : PageViewModel
     private readonly ProfileRepository _repository;
     private readonly INavigationService _navigation;
     private readonly UnlockThrottle _throttle;
+    private readonly TimeProvider _clock;
 
-    // The entries with their folded search fields (title, username, URL, folder), built once; cleared on lock.
+    // The entries with their folded search fields (title, username, URL, folder), rebuilt after every save; cleared on lock.
     private (VaultEntry Entry, string[] Fields)[] _index;
 
     public EntryListViewModel(
@@ -24,7 +25,8 @@ public sealed partial class EntryListViewModel : PageViewModel
         VaultSession session,
         ProfileRepository repository,
         INavigationService navigation,
-        UnlockThrottle throttle)
+        UnlockThrottle throttle,
+        TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(session);
@@ -37,6 +39,7 @@ public sealed partial class EntryListViewModel : PageViewModel
         _repository = repository;
         _navigation = navigation;
         _throttle = throttle;
+        _clock = clock ?? TimeProvider.System;
         Entries = session.Content.Entries;
         _index = BuildIndex(Entries);
         Folders = DistinctFolders(Entries);
@@ -86,12 +89,103 @@ public sealed partial class EntryListViewModel : PageViewModel
     /// <summary>True until the vault is locked; <see cref="AutoLock"/> uses it to know whether a vault is open.</summary>
     public bool IsOpen => _session.IsUnlocked;
 
+    /// <summary>
+    /// The entry the user last opened, so the list page can give it the focus back after Back. After a save it is the
+    /// new record; null after a delete and after the lock.
+    /// </summary>
+    public VaultEntry? LastOpened { get; private set; }
+
     [RelayCommand]
     private void OpenEntry(VaultEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
-        _navigation.NavigateTo(new EntryDetailViewModel(entry, _navigation));
+        LastOpened = entry;
+        _navigation.NavigateTo(new EntryDetailViewModel(this, entry, _navigation, _clock));
+    }
+
+    /// <summary>Opens the detail page with an empty draft; the first save adds the entry at the end of the vault.</summary>
+    [RelayCommand]
+    private void NewEntry() => _navigation.NavigateTo(new EntryDetailViewModel(this, null, _navigation, _clock));
+
+    /// <summary>
+    /// Saves <paramref name="entry"/> into the vault: it replaces the entry with the same <c>Id</c> in place, or is
+    /// appended. The write is synchronous and atomic; then the entries, the search index and the folders are rebuilt
+    /// and the filter is applied again.
+    /// </summary>
+    /// <returns>False, with nothing written, when the vault is already locked.</returns>
+    /// <exception cref="IOException">The write failed; the vault on disk and this list are unchanged.</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was denied; the vault and this list are unchanged.</exception>
+    internal bool Commit(VaultEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        if (!IsOpen)
+        {
+            return false;
+        }
+
+        var current = _session.Content.Entries;
+        var updated = new List<VaultEntry>(current.Count + 1);
+        var replaced = false;
+        foreach (var existing in current)
+        {
+            if (!replaced && existing.Id == entry.Id)
+            {
+                updated.Add(entry);
+                replaced = true;
+            }
+            else
+            {
+                updated.Add(existing);
+            }
+        }
+
+        if (!replaced)
+        {
+            updated.Add(entry);
+        }
+
+        Write([.. updated]);
+        LastOpened = entry;
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the entry with <paramref name="id"/> from the vault, with the same write and rebuild as
+    /// <see cref="Commit"/>.
+    /// </summary>
+    /// <returns>False, with nothing written, when the vault is already locked.</returns>
+    /// <exception cref="IOException">The write failed; the vault on disk and this list are unchanged.</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was denied; the vault and this list are unchanged.</exception>
+    internal bool Remove(Guid id)
+    {
+        if (!IsOpen)
+        {
+            return false;
+        }
+
+        Write([.. _session.Content.Entries.Where(existing => existing.Id != id)]);
+        LastOpened = null;
+        return true;
+    }
+
+    // Saves the new entries (on failure the session and the disk stay unchanged), then rebuilds the list from them.
+    private void Write(VaultEntry[] entries)
+    {
+        _session.Save(_session.Content with { Entries = entries });
+
+        Entries = entries;
+        _index = BuildIndex(entries);
+        Folders = DistinctFolders(entries);
+        if (SelectedFolder is { } folder && !Folders.Contains(folder, StringComparer.Ordinal))
+        {
+            // Clearing the folder applies the filter again.
+            SelectedFolder = null;
+            return;
+        }
+
+        ApplyFilter();
     }
 
     /// <summary>
@@ -101,6 +195,7 @@ public sealed partial class EntryListViewModel : PageViewModel
     private void Lock()
     {
         _session.Dispose();
+        LastOpened = null;
         _index = [];
         Entries = [];
         Folders = [];

@@ -11,6 +11,8 @@ namespace PasswordManager.App.Views;
 
 public sealed partial class EntryListPage : Page
 {
+    private const int RealizeAttempts = 3;
+
     // The folder names behind the combo box items 1..n; item 0 is "all folders".
     private IReadOnlyList<string> _folders = [];
 
@@ -28,18 +30,56 @@ public sealed partial class EntryListPage : Page
         ShowFolders();
     }
 
-    // The list gets the keyboard focus when it has something to show; with nothing listed (an empty vault, or a search that
-    // matches nothing) focus starts on the Lock button. The enqueue lets the list build its containers first.
+    // Where the focus starts. With nothing listed (an empty vault, or a search that matches nothing) it is the New entry
+    // button. Otherwise it is the entry the user just came back from, when it is still listed, and else the list itself
+    // (its first item). The enqueue lets the list build its containers first.
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (ViewModel.FilteredEntries.Count == 0)
         {
-            LockButton.Focus(FocusState.Programmatic);
+            NewEntryButton.Focus(FocusState.Programmatic);
         }
         else
         {
-            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => EntriesList.Focus(FocusState.Programmatic));
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => FocusStart(RealizeAttempts));
         }
+    }
+
+    // The container of an entry far down a virtualized list exists only after the list scrolled to it, which can take a
+    // layout pass or two; when it never shows up, the list gets the focus instead.
+    private void FocusStart(int attemptsLeft)
+    {
+        if (ViewModel.LastOpened is { } opened && IsListed(opened))
+        {
+            EntriesList.ScrollIntoView(opened);
+            EntriesList.UpdateLayout();
+            if (EntriesList.ContainerFromItem(opened) is Control container && container.Focus(FocusState.Programmatic))
+            {
+                return;
+            }
+
+            if (attemptsLeft > 0)
+            {
+                DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => FocusStart(attemptsLeft - 1));
+                return;
+            }
+        }
+
+        EntriesList.Focus(FocusState.Programmatic);
+    }
+
+    // The list holds the very instance that was opened (or saved), so a reference comparison finds it.
+    private bool IsListed(VaultEntry entry)
+    {
+        foreach (var listed in ViewModel.FilteredEntries)
+        {
+            if (ReferenceEquals(listed, entry))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // A screen reader reads the name of an item container, not the ToString() of the entry behind it.
