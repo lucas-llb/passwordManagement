@@ -197,9 +197,9 @@ public sealed class AccessibilityE2ETests
         app.PressKey(VirtualKeyShort.UP);
         app.WaitFocus(EntryItem(0));
 
-        // The list is the last stop, so Tab wraps to the first control: Lock, then the search and the two filters in
-        // document order, and back to the list.
-        foreach (var expected in new[] { "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly", "EntriesFolder", EntryItem(0) })
+        // The list is the last stop, so Tab wraps to the first control: New entry and Lock, then the search and the two
+        // filters in document order, and back to the list.
+        foreach (var expected in new[] { "EntriesNew", "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly", "EntriesFolder", EntryItem(0) })
         {
             app.PressKey(VirtualKeyShort.TAB);
             app.WaitFocus(expected);
@@ -207,24 +207,73 @@ public sealed class AccessibilityE2ETests
 
         OpenEntryByKeyboard(app);
         AssertEveryFocusableElementIsNamed(app);
-        foreach (var expected in new[] { "DetailUsername", "DetailUrl", "DetailFolder", "DetailNotes", "DetailBack" })
+
+        // A clean, saved entry: Save and Discard are disabled and so skipped. Back sits first in the document, so the
+        // cycle runs through the form, Delete, then wraps to Back and on to the title again.
+        foreach (var expected in new[]
+        {
+            "DetailUsername", "DetailPassword", "DetailShowPassword", "DetailUrl", "DetailFolder", "DetailNotes",
+            "DetailFavorite", "DetailDelete", "DetailBack", "DetailTitle",
+        })
         {
             app.PressKey(VirtualKeyShort.TAB);
             app.WaitFocus(expected);
         }
 
         // Enter on the focused back button.
+        app.PressChord(VirtualKeyShort.SHIFT, VirtualKeyShort.TAB);
+        app.WaitFocus("DetailBack");
         app.PressKey(VirtualKeyShort.RETURN);
         app.WaitFor("EntriesList");
         app.WaitGone("DetailTitle");
         app.WaitFocus(EntryItem(0));
 
+        // Back from the second entry puts the focus on that entry, not on the first one.
+        app.PressKey(VirtualKeyShort.DOWN);
+        app.WaitFocus(EntryItem(1));
         OpenEntryByKeyboard(app);
         app.PressKey(VirtualKeyShort.ESCAPE);
         app.WaitFor("EntriesList");
         app.WaitGone("DetailTitle");
-        app.WaitFocus(EntryItem(0));
+        app.WaitFocus(EntryItem(1));
 
+        // Typing in the title makes the draft dirty: Escape (the same command as Back) stays on the page.
+        var title = SeededVault.Entries[1].GetProperty("title").GetString()!;
+        OpenEntryByKeyboard(app);
+        app.PressKey(VirtualKeyShort.KEY_X);
+        app.WaitEnabled("DetailSave");
+        app.WaitEnabled("DetailBack", expected: false);
+        Assert.NotEqual(title, app.ValueOf("DetailTitle"));
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        Assert.NotNull(app.Find("DetailTitle"));
+        Assert.Null(app.Find("EntriesList"));
+
+        // With the draft dirty, Save and Discard join the cycle between the favorite box and Delete, and Back drops out of
+        // it (it is disabled); backwards from the title: Delete, Discard, Save.
+        foreach (var expected in new[] { "DetailDelete", "DetailDiscard", "DetailSave" })
+        {
+            app.PressChord(VirtualKeyShort.SHIFT, VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("DetailDiscard");
+
+        // Enter on Discard puts the saved title back and frees Back. The button disables itself, so the focus is put
+        // back on the title before Escape goes back to the list, on the same entry.
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitEnabled("DetailDiscard", expected: false);
+        app.WaitEnabled("DetailBack");
+        Assert.Equal(title, app.ValueOf("DetailTitle"));
+        app.WaitFor("DetailTitle").Focus();
+        app.WaitFocus("DetailTitle");
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitFor("EntriesList");
+        app.WaitGone("DetailTitle");
+        app.WaitFocus(EntryItem(1));
+
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("EntriesNew");
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesLock");
         app.PressKey(VirtualKeyShort.RETURN);
@@ -234,13 +283,49 @@ public sealed class AccessibilityE2ETests
     }
 
     [Fact]
-    public void EmptyVault_FocusStartsOnLock()
+    public void DetailDeleteDialog_CloseIsDefault_EnterAndEscapeCancelWithoutLeavingThePage()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        OpenProfileByKeyboard(app);
+        UnlockByKeyboard(app, SeededVault.Password);
+        app.WaitFocus(EntryItem(0));
+        OpenEntryByKeyboard(app);
+
+        // Delete is the last control of the form; Tab from the favorite box reaches it.
+        app.WaitFor("DetailFavorite").Focus();
+        app.WaitFocus("DetailFavorite");
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("DetailDelete");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitDialog("DetailDeleteDialog");
+        AssertEveryFocusableElementIsNamed(app);
+
+        // Close is the default button, so Enter cancels; the page stays and the focus returns to Delete.
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitDialogGone("DetailDeleteDialog");
+        app.WaitFocus("DetailDelete");
+        Assert.NotNull(app.Find("DetailTitle"));
+        Assert.Null(app.Find("EntriesList"));
+
+        // Escape closes the dialog too, and it is the dialog that takes the key: the Escape accelerator of the Back button
+        // must not also leave the page.
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitDialog("DetailDeleteDialog");
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitDialogGone("DetailDeleteDialog");
+        app.WaitFocus("DetailDelete");
+        Assert.NotNull(app.Find("DetailTitle"));
+        Assert.Null(app.Find("EntriesList"));
+    }
+
+    [Fact]
+    public void EmptyVault_FocusStartsOnNew()
     {
         using var app = AppSession.Launch(SeededVault.SeedEmpty);
         OpenProfileByKeyboard(app);
         UnlockByKeyboard(app, SeededVault.EmptyPassword);
 
-        app.WaitFocus("EntriesLock");
+        app.WaitFocus("EntriesNew");
         app.WaitFor("EntriesEmpty");
         AssertEveryFocusableElementIsNamed(app);
     }

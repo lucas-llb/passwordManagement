@@ -62,6 +62,7 @@ public sealed class EntryListViewModelTests : IDisposable
 
         var detail = Assert.IsType<EntryDetailViewModel>(_navigation.Current);
         Assert.Same(_second, detail.Entry);
+        Assert.Same(_second, list.LastOpened);
         Assert.True(_navigation.CanGoBack);
     }
 

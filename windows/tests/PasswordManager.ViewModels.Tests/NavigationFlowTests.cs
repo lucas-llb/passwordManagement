@@ -40,7 +40,7 @@ public sealed class NavigationFlowTests : IDisposable
         // List -> Detail.
         list.OpenEntryCommand.Execute(list.Entries[1]);
         var detail = Assert.IsType<EntryDetailViewModel>(navigation.Current);
-        Assert.Equal("Bank", detail.Entry.Title);
+        Assert.Equal("Bank", detail.Entry?.Title);
         Assert.True(navigation.CanGoBack);
 
         // Detail -> List.

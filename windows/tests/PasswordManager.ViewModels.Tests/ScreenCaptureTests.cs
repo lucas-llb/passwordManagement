@@ -33,10 +33,12 @@ public sealed class ScreenCaptureTests : IDisposable
         using var session = _profiles.OpenSession(profile);
 
         var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle);
-        var detail = new EntryDetailViewModel(list.Entries[0], _navigation);
+        var detail = new EntryDetailViewModel(list, list.Entries[0], _navigation, _profiles.Time);
+        var newEntry = new EntryDetailViewModel(list, null, _navigation, _profiles.Time);
 
         Assert.False(list.AllowsScreenCapture);
         Assert.False(detail.AllowsScreenCapture);
+        Assert.False(newEntry.AllowsScreenCapture);
     }
 
     [Fact]

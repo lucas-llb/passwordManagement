@@ -98,7 +98,7 @@ Toda a lógica fica em `PasswordManager.Core`, testável sem UI.
 | ID | História | Critérios de aceite |
 |---|---|---|
 | W-19 | Lista com busca | Busca local por título, usuário, URL e pasta; filtros favoritos/pasta; responsivo com 2.000 entradas. |
-| W-20 | Detalhe e edição | Todos os campos do `VaultEntry`; senha oculta por padrão com botão mostrar; `createdAt`/`updatedAt` mantidos; salvar grava atomicamente. |
+| W-20 | Detalhe e edição | Todos os campos do `VaultEntry`; senha oculta por padrão com botão mostrar; `createdAt`/`updatedAt` mantidos; salvar grava atomicamente; inclui criar e excluir entrada. |
 | W-21 | Gerador de senhas | Embutido no formulário; tamanho (padrão 20), maiúsculas, números, símbolos; `RandomNumberGenerator`, sem viés de módulo; testes no Core. |
 | W-22 | Área de transferência | `ClipboardContentOptions` com `IsAllowedInHistory = false` e `IsRoamable = false`; limpa após 30 s só se o conteúdo ainda for o copiado; testado com Win+V ligado. |
 

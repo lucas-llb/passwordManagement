@@ -63,6 +63,21 @@ internal static class SeededVault
         return profile.GetProperty("id").GetString()!;
     }
 
+    // The vault file of the only profile in the folder, where the app reads and saves it.
+    public static string VaultPath(string directory) =>
+        new ProfileRepository(directory).GetVaultPath(Guid.Parse(ProfileId(directory)));
+
+    // What the app wrote: the profile's vault reopened through Core, as another program (or Android) would read it.
+    public static VaultContent ReadContent(string directory, string password) => ReadFile(VaultPath(directory), password);
+
+    // Any vault file (for example the .bak copy of the previous version), decrypted with this password.
+    public static VaultContent ReadFile(string path, string password)
+    {
+        using var session = new VaultSession(path);
+        session.Unlock(password);
+        return session.Content;
+    }
+
     private static VaultEntry LargeEntry(int index) => new()
     {
         Id = Guid.NewGuid(),

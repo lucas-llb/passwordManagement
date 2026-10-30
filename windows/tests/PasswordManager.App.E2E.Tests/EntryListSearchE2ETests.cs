@@ -145,6 +145,8 @@ public sealed class EntryListSearchE2ETests(ITestOutputHelper output)
         app.WaitFocus($"EntriesList[{titles[0]}]");
 
         app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("EntriesNew");
+        app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesLock");
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesSearch");
