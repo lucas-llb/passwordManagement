@@ -117,6 +117,23 @@ public sealed partial class EntryListViewModel : PageViewModel
     [RelayCommand]
     private void NewEntry() => _navigation.NavigateTo(new EntryDetailViewModel(this, null, _navigation, _clock));
 
+    /// <summary>Opens the export page, above this list; Back returns here.</summary>
+    [RelayCommand]
+    private void OpenExport() => _navigation.NavigateTo(new ExportViewModel(this, _navigation));
+
+    /// <summary>The full path of the app's vaults folder, which the export page refuses as a destination.</summary>
+    internal string VaultsDirectory => _repository.VaultsDirectory;
+
+    /// <summary>
+    /// Builds an encrypted export of the open vault under its own fresh key and <paramref name="password"/>. Nothing
+    /// is written. It runs Argon2id, so callers run it off the UI thread.
+    /// </summary>
+    /// <param name="password">The export password. Not modified; the caller zeroes it.</param>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked.</exception>
+    /// <exception cref="ArgumentException"><paramref name="password"/> contains an invalid surrogate.</exception>
+    internal byte[] Export(ReadOnlySpan<char> password) => _session.Export(password);
+
     /// <summary>
     /// Saves <paramref name="entry"/> into the vault: it replaces the entry with the same <c>Id</c> in place, or is
     /// appended. The write is synchronous and atomic; then the entries, the search index and the folders are rebuilt

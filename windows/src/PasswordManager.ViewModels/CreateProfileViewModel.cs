@@ -124,7 +124,7 @@ public sealed partial class CreateProfileViewModel : PageViewModel
             }
 
             NameError = nameError;
-            PasswordError = CheckPassword(input);
+            PasswordError = NewPasswordRules.Check(input.Password, input.Confirmation);
             if (NameError != ProfileNameError.None || PasswordError != NewPasswordError.None)
             {
                 return;
@@ -244,31 +244,6 @@ public sealed partial class CreateProfileViewModel : PageViewModel
 
     // Also the condition of the suggestion command: both wait until no create is running.
     private bool CanGoBack() => !CreateCommand.IsRunning;
-
-    // TooShort wins over Mismatch: there is no point asking to retype a password that will be refused anyway.
-    private static NewPasswordError CheckPassword(NewMasterPassword input)
-    {
-        if (CountScalarValues(input.Password) < MinimumPasswordLength)
-        {
-            return NewPasswordError.TooShort;
-        }
-
-        return input.Password.AsSpan().SequenceEqual(input.Confirmation)
-            ? NewPasswordError.None
-            : NewPasswordError.Mismatch;
-    }
-
-    private static int CountScalarValues(ReadOnlySpan<char> text)
-    {
-        var count = 0;
-        var enumerator = text.EnumerateRunes();
-        while (enumerator.MoveNext())
-        {
-            count++;
-        }
-
-        return count;
-    }
 
     private bool TryValidateName(string name, out ProfileNameError error)
     {

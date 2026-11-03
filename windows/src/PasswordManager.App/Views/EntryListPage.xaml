@@ -34,6 +34,10 @@
                     Command="{x:Bind ViewModel.NewEntryCommand}"
                     Style="{StaticResource AccentButtonStyle}" />
                 <Button
+                    AutomationProperties.AutomationId="EntriesExport"
+                    x:Uid="EntriesExport"
+                    Command="{x:Bind ViewModel.OpenExportCommand}" />
+                <Button
                     AutomationProperties.AutomationId="EntriesLock"
                     x:Uid="EntriesLock"
                     Command="{x:Bind ViewModel.LockCommand}" />

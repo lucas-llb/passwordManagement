@@ -251,6 +251,94 @@ public sealed class VaultFileTests : IDisposable
         Assert.Equal(message, exception.Message);
     }
 
+    // --- Export ---
+
+    // A one-slot export: only the export password, no kit slot.
+    private static byte[] BuildExport()
+    {
+        var header = VaultHeader.Build([KeySlot.CreatePasswordSlot(Password, LowCost, Vk)]);
+        return VaultBody.Seal(header, Vk, new VaultContent { Entries = [SampleEntry] });
+    }
+
+    [Fact]
+    public void WriteExport_NewFile_WritesExactBytesWithoutTmpOrBak()
+    {
+        var export = BuildExport();
+
+        VaultFile.WriteExport(_path, export);
+
+        Assert.Equal(export, File.ReadAllBytes(_path));
+        Assert.Equal([_path], Directory.GetFileSystemEntries(_directory.FullName));
+    }
+
+    [Fact]
+    public void WriteExport_ExistingFile_IsReplaced()
+    {
+        VaultFile.Write(_path, V0);
+        var export = BuildExport();
+
+        VaultFile.WriteExport(_path, export);
+
+        Assert.Equal(export, File.ReadAllBytes(_path));
+        Assert.False(File.Exists(BackupPath));
+        Assert.False(File.Exists(TempPath));
+    }
+
+    [Fact]
+    public void WriteExport_FileWithKitSlot_ThrowsBeforeTouchingDisk()
+    {
+        VaultFile.Write(_path, V0);
+        var twoSlots = VaultSession.Create(Password, new char[RecoveryKit.TextLength], LowCost);
+
+        var exception = Assert.Throws<ArgumentException>(() => VaultFile.WriteExport(_path, twoSlots));
+
+        Assert.Equal("contents", exception.ParamName);
+        Assert.Equal(V0, File.ReadAllBytes(_path));
+        Assert.Equal([_path], Directory.GetFileSystemEntries(_directory.FullName));
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidFiles))]
+    public void WriteExport_InvalidBytes_ThrowsVaultFormatException(string name, byte[] contents, string message)
+    {
+        Assert.NotNull(name);
+
+        var exception = Assert.Throws<VaultFormatException>(() => VaultFile.WriteExport(_path, contents));
+
+        Assert.Equal(message, exception.Message);
+        Assert.Empty(Directory.GetFileSystemEntries(_directory.FullName));
+    }
+
+    [Fact]
+    public void WriteExport_MissingDirectory_ThrowsAndCreatesNothing()
+    {
+        var missing = Path.Combine(_directory.FullName, "missing");
+        var path = Path.Combine(missing, $"{Guid.NewGuid()}.pmvault");
+
+        Assert.Throws<DirectoryNotFoundException>(() => VaultFile.WriteExport(path, BuildExport()));
+
+        Assert.False(Directory.Exists(missing));
+        Assert.Empty(Directory.GetFileSystemEntries(_directory.FullName));
+    }
+
+    [Fact]
+    public void WriteExport_TargetLocked_ThrowsAndKeepsOriginal()
+    {
+        VaultFile.Write(_path, V0);
+
+        using (new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            // Windows reports a sharing violation on the rename as access denied, so either documented exception is accepted.
+            var exception = Record.Exception(() => VaultFile.WriteExport(_path, BuildExport()));
+
+            Assert.True(exception is IOException or UnauthorizedAccessException, $"Unexpected exception: {exception}");
+        }
+
+        Assert.Equal(V0, File.ReadAllBytes(_path));
+        Assert.False(File.Exists(TempPath));
+        Assert.False(File.Exists(BackupPath));
+    }
+
     // --- End to end ---
 
     [Fact]

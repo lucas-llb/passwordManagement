@@ -145,6 +145,9 @@ public sealed partial class MainWindow : Window
             case EntryDetailViewModel detail:
                 RootFrame.Navigate(typeof(EntryDetailPage), detail);
                 break;
+            case ExportViewModel export:
+                RootFrame.Navigate(typeof(ExportPage), export);
+                break;
             case RecoveryKitViewModel kit:
                 RootFrame.Navigate(typeof(RecoveryKitPage), kit);
                 break;

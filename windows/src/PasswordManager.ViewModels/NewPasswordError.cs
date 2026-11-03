@@ -1,6 +1,9 @@
 namespace PasswordManager.ViewModels;
 
-/// <summary>Why the master password typed on the profile creation page was refused. The view maps each value to its own text.</summary>
+/// <summary>
+/// Why the new password typed on the profile creation page (the master password) or on the export page (the export
+/// password) was refused. The view maps each value to its own text.
+/// </summary>
 public enum NewPasswordError
 {
     /// <summary>No failure to show: no attempt yet, or the password was accepted.</summary>

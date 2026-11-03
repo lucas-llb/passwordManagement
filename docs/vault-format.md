@@ -135,6 +135,7 @@ Desbloqueio: a senha tenta só o slot tipo 1; o kit tenta só o slot tipo 2. Nun
   - Gerar de novo substitui o slot tipo 2, e o kit antigo deixa de funcionar.
   - Remover o kit tira o slot, deixando `slotCount = 1`.
 - Arquivos `.pmvault` exportados usam o mesmo layout, uma Vault Key nova, exatamente um slot tipo 1 (a senha de exportação) e nenhum slot tipo 2.
+- A exportação para um arquivo escolhido pelo usuário usa a mesma gravação atômica, sem `.bak` e sem criar pasta: o temporário é `<arquivo escolhido>.tmp` na mesma pasta, e é apagado no fim. A recusa de gravar na pasta de cofres do app é regra do app, não deste formato.
 - Gravação atômica (igual nas duas plataformas; `tmp` e `bak` ficam na mesma pasta do `<id>.pmvault`, então a renomeação nunca cruza volumes):
   1. Validar os bytes completos como na leitura. Bytes inválidos falham antes de tocar o disco.
   2. Criar ou truncar `<id>.pmvault.tmp` (um temporário antigo, de uma queda, é sobrescrito), gravar os bytes e forçar a escrita no disco (flush/fsync).

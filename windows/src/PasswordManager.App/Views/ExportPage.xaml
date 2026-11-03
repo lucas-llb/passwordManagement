@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="PasswordManager.App.Views.ExportPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:PasswordManager.App.Views"
+    Loaded="OnLoaded">
+
+    <ScrollViewer>
+        <Grid Padding="24">
+            <StackPanel
+                MaxWidth="480"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="16">
+                <TextBlock
+                    AutomationProperties.AutomationId="ExportTitle"
+                    x:Uid="ExportTitle"
+                    Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ExportIntro"
+                    x:Uid="ExportIntro"
+                    TextWrapping="Wrap" />
+
+                <PasswordBox
+                    x:Name="PasswordInput"
+                    AutomationProperties.AutomationId="ExportPassword"
+                    x:Uid="ExportPassword" />
+                <PasswordBox
+                    x:Name="ConfirmInput"
+                    AutomationProperties.AutomationId="ExportConfirm"
+                    x:Uid="ExportConfirm"
+                    KeyDown="OnConfirmKeyDown" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="ExportPasswordTooShort"
+                    x:Uid="ExportPasswordTooShort"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ExportPage.IsTooShort(ViewModel.PasswordError), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ExportPasswordMismatch"
+                    x:Uid="ExportPasswordMismatch"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ExportPage.IsMismatch(ViewModel.PasswordError), Mode=OneWay}" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="ExportDone"
+                    Text="{x:Bind local:ExportPage.DoneText(ViewModel.SavedFileName), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ExportPage.IsSaved(ViewModel.Outcome), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ExportFailed"
+                    x:Uid="ExportFailed"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ExportPage.IsFailed(ViewModel.Outcome), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ExportVaultsFolder"
+                    x:Uid="ExportVaultsFolder"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ExportPage.IsVaultsFolder(ViewModel.Outcome), Mode=OneWay}" />
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button
+                        AutomationProperties.AutomationId="ExportSave"
+                        x:Uid="ExportSave"
+                        Click="OnSaveClick"
+                        IsEnabled="{x:Bind local:ExportPage.IsNot(ViewModel.ExportCommand.IsRunning), Mode=OneWay}"
+                        Style="{StaticResource AccentButtonStyle}" />
+                    <Button
+                        AutomationProperties.AutomationId="ExportBack"
+                        x:Uid="NavBack"
+                        Command="{x:Bind ViewModel.GoBackCommand}"
+                        KeyboardAcceleratorPlacementMode="Hidden">
+                        <Button.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="Escape" />
+                        </Button.KeyboardAccelerators>
+                    </Button>
+                    <ProgressRing
+                        Width="24"
+                        Height="24"
+                        AutomationProperties.AutomationId="ExportProgress"
+                        x:Uid="ExportProgress"
+                        IsActive="{x:Bind ViewModel.ExportCommand.IsRunning, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.ExportCommand.IsRunning, Mode=OneWay}" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>

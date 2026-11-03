@@ -69,6 +69,9 @@
   <data name="EntriesNew.Content" xml:space="preserve">
     <value>Nova entrada</value>
   </data>
+  <data name="EntriesExport.Content" xml:space="preserve">
+    <value>Exportar</value>
+  </data>
   <data name="EntriesSearch.Header" xml:space="preserve">
     <value>Buscar</value>
   </data>
@@ -275,6 +278,45 @@
   </data>
   <data name="CreateSuggestionHint.Text" xml:space="preserve">
     <value>Frase-senha sugerida, já colocada nos dois campos. Memorize-a ou anote-a em um lugar seguro:</value>
+  </data>
+  <data name="ExportTitle.Text" xml:space="preserve">
+    <value>Exportar cofre</value>
+  </data>
+  <data name="ExportIntro.Text" xml:space="preserve">
+    <value>A exportação é um arquivo .pmvault protegido por uma senha de exportação própria; use uma senha diferente da senha mestra. Serve de backup e para levar as senhas a outro aparelho. Quem tiver o arquivo e essa senha lê todas as entradas, e o app não recupera essa senha.</value>
+  </data>
+  <data name="ExportPassword.Header" xml:space="preserve">
+    <value>Senha de exportação</value>
+  </data>
+  <data name="ExportConfirm.Header" xml:space="preserve">
+    <value>Confirme a senha de exportação</value>
+  </data>
+  <data name="ExportPasswordTooShort.Text" xml:space="preserve">
+    <value>A senha de exportação precisa ter pelo menos 12 caracteres.</value>
+  </data>
+  <data name="ExportPasswordMismatch.Text" xml:space="preserve">
+    <value>As duas senhas não são iguais.</value>
+  </data>
+  <data name="ExportSave.Content" xml:space="preserve">
+    <value>Escolher local e exportar</value>
+  </data>
+  <data name="ExportProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Exportando o cofre</value>
+  </data>
+  <data name="ExportFailed.Text" xml:space="preserve">
+    <value>Não foi possível salvar a exportação. Escolha outro local e tente de novo.</value>
+  </data>
+  <data name="ExportVaultsFolder.Text" xml:space="preserve">
+    <value>Essa é a pasta de dados do app. Escolha outra pasta.</value>
+  </data>
+  <data name="ExportDone" xml:space="preserve">
+    <value>Exportação salva: {0}</value>
+  </data>
+  <data name="ExportFileTypeName" xml:space="preserve">
+    <value>Exportação do cofre</value>
+  </data>
+  <data name="ExportSuggestedFileName" xml:space="preserve">
+    <value>cofre-exportado</value>
   </data>
   <data name="KitTitle.Text" xml:space="preserve">
     <value>Kit de Recuperação</value>

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
+using FlaUI.Core.Exceptions;
 using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
 using FlaUI.Core.WindowsAPI;
@@ -18,6 +19,12 @@ internal sealed class AppSession : IDisposable
 #else
     private const bool IsDebugBuild = false;
 #endif
+
+    // The Win32 class and control ids of the common file dialog (stable on Windows 10 and 11, checked live).
+    private const string FileDialogClass = "#32770";
+    private const string FileNameEditId = "1001";
+    private const string SaveButtonId = "1";
+    private const string CancelButtonId = "2";
 
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
@@ -199,6 +206,84 @@ internal sealed class AppSession : IDisposable
             () => dialog.FindFirstDescendant(cf => cf.ByAutomationId(buttonId)), Timeout, TimeSpan.FromMilliseconds(100)).Result
             ?? throw new InvalidOperationException($"Button '{buttonId}' of dialog '{dialogId}' did not appear.");
         button.Patterns.Invoke.Pattern.Invoke();
+    }
+
+    // The Windows common file dialog ("Salvar como") that the app's FileSavePicker opens: a Win32 window of class #32770.
+    // UI Automation shows it as a modal child Window of the app window; an owned top-level window of the app process is
+    // accepted too, in case another Windows build reparents it. Its controls are named in the system language, so they
+    // are found only by their Win32 control ids and control types (the ids alone also match a toolbar and list items).
+    public AutomationElement? FindFileDialog()
+    {
+        var dialog = Window.FindFirstChild(cf => cf.ByControlType(ControlType.Window).And(cf.ByClassName(FileDialogClass)));
+        if (dialog is not null)
+        {
+            return dialog;
+        }
+
+        var processId = Window.Properties.ProcessId.Value;
+        return Window.Automation.GetDesktop().FindAllChildren(cf => cf.ByClassName(FileDialogClass))
+            .FirstOrDefault(window => window.Properties.ProcessId.ValueOrDefault == processId);
+    }
+
+    public AutomationElement WaitFileDialog() =>
+        Retry.WhileNull(FindFileDialog, Timeout, TimeSpan.FromMilliseconds(100), ignoreException: true).Result
+        ?? throw new InvalidOperationException("The file dialog did not open.");
+
+    public void WaitFileDialogGone()
+    {
+        var gone = Retry.WhileTrue(() => FindFileDialog() is not null, Timeout, TimeSpan.FromMilliseconds(100), ignoreException: true).Result;
+        Assert.True(gone, "The file dialog is still open.");
+    }
+
+    // Types the full path in the file name box (edit 1001) through its ValuePattern and presses Save (button 1), as a user
+    // who pastes a path does. The path is never one that already exists, so no overwrite prompt follows.
+    public void SaveInFileDialog(string fullPath)
+    {
+        var dialog = WaitFileDialog();
+        var name = Retry.WhileNull(
+            () => dialog.FindFirstDescendant(cf => cf.ByAutomationId(FileNameEditId).And(cf.ByControlType(ControlType.Edit))),
+            Timeout,
+            TimeSpan.FromMilliseconds(100),
+            ignoreException: true).Result
+            ?? throw new InvalidOperationException("The file name box of the file dialog did not appear.");
+        name.Patterns.Value.Pattern.SetValue(fullPath);
+        var typed = Retry.WhileFalse(
+            () => name.Patterns.Value.Pattern.Value.Value == fullPath, Timeout, TimeSpan.FromMilliseconds(100), ignoreException: true).Success;
+        Assert.True(typed, "The file name box did not take the path.");
+        FileDialogButton(dialog, SaveButtonId).Patterns.Invoke.Pattern.Invoke();
+        WaitFileDialogGone();
+    }
+
+    // Cancel (button 2): the picker returns no path.
+    public void CancelFileDialog()
+    {
+        FileDialogButton(WaitFileDialog(), CancelButtonId).Patterns.Invoke.Pattern.Invoke();
+        WaitFileDialogGone();
+    }
+
+    private static AutomationElement FileDialogButton(AutomationElement dialog, string id) =>
+        Retry.WhileNull(
+            () => dialog.FindFirstDescendant(cf => cf.ByAutomationId(id).And(cf.ByControlType(ControlType.Button))),
+            Timeout,
+            TimeSpan.FromMilliseconds(100),
+            ignoreException: true).Result
+            ?? throw new InvalidOperationException($"Button {id} of the file dialog did not appear.");
+
+    // A test that fails with the dialog open must not leave it on the desktop: it is canceled before the app closes.
+    // Best effort, as the app may already be gone.
+    private void CancelOpenFileDialog()
+    {
+        try
+        {
+            if (FindFileDialog() is not null)
+            {
+                CancelFileDialog();
+            }
+        }
+        catch (Exception ex) when (ex is COMException or FlaUIException or InvalidOperationException or TimeoutException)
+        {
+            // The app is killed next, which closes its dialog with it.
+        }
     }
 
     // Every keystroke goes through here: it brings the app window to the front and refuses to go on unless the
@@ -485,7 +570,11 @@ internal sealed class AppSession : IDisposable
         return rect;
     }
 
-    public void Dispose() => Cleanup(_app, _automation, VaultsDirectory);
+    public void Dispose()
+    {
+        CancelOpenFileDialog();
+        Cleanup(_app, _automation, VaultsDirectory);
+    }
 
     private static void Cleanup(Application? app, UIA3Automation? automation, string directory)
     {
