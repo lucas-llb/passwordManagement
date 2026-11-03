@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PasswordManager.Core.Passwords;
@@ -20,7 +21,11 @@ public sealed partial class EntryDetailViewModel : PageViewModel
     private readonly EntryListViewModel _vault;
     private readonly INavigationService _navigation;
     private readonly TimeProvider _clock;
+    private readonly ClipboardGuard _clipboard;
     private readonly bool _loaded;
+
+    // The id of the last copy this page made, or 0. IsPasswordCopied is true while the guard waits on exactly this copy.
+    private long _copyId;
 
     /// <param name="vault">The open vault that saves and removes the entry.</param>
     /// <param name="entry">The entry to show, or null for a new entry.</param>
@@ -39,6 +44,7 @@ public sealed partial class EntryDetailViewModel : PageViewModel
         _vault = vault;
         _navigation = navigation;
         _clock = clock;
+        _clipboard = vault.Clipboard;
         Entry = entry;
         Title = string.Empty;
         Username = string.Empty;
@@ -83,6 +89,7 @@ public sealed partial class EntryDetailViewModel : PageViewModel
 
     /// <summary>The password in the draft. Never null. Hidden by the page until <see cref="IsPasswordVisible"/>.</summary>
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CopyPasswordCommand))]
     public partial string Password { get; set; }
 
     /// <summary>The URL in the draft. Never null.</summary>
@@ -125,6 +132,19 @@ public sealed partial class EntryDetailViewModel : PageViewModel
     /// </summary>
     [ObservableProperty]
     public partial bool SaveFailed { get; private set; }
+
+    /// <summary>
+    /// True while the clipboard holds the password this page copied and the guard has not cleared it yet. It follows the
+    /// guard only between <see cref="OnNavigatedTo"/> and <see cref="OnNavigatedFrom"/>.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsPasswordCopied { get; private set; }
+
+    /// <summary>
+    /// True after a copy the clipboard refused (it was busy). The next successful copy clears it.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool CopyFailed { get; private set; }
 
     /// <summary>True between <see cref="RequestDeleteCommand"/> and the confirm or cancel of the delete dialog.</summary>
     [ObservableProperty]
@@ -185,6 +205,38 @@ public sealed partial class EntryDetailViewModel : PageViewModel
             Array.Clear(generated);
         }
     }
+
+    /// <summary>
+    /// Copies a password through the <see cref="ClipboardGuard"/>, which marks it private, clears it after 30 s and
+    /// clears it at once when the vault locks. With a null <paramref name="selection"/> it copies the whole password of
+    /// the draft, as typed or generated (also when it is hidden); otherwise it copies that text, which is the selection
+    /// of the shown password on Ctrl+C. Does nothing when the text is empty. A refusal of the clipboard sets
+    /// <see cref="CopyFailed"/>. Never changes the draft, <see cref="IsDirty"/> or <see cref="IsPasswordVisible"/>.
+    /// </summary>
+    /// <param name="selection">The text to copy, or null for the whole password.</param>
+    [RelayCommand(CanExecute = nameof(CanCopyPassword))]
+    private void CopyPassword(string? selection)
+    {
+        // Execute does not check CanExecute, and Copy does not accept an empty secret.
+        var text = selection ?? Password;
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        var id = _clipboard.Copy(text);
+        if (id == 0)
+        {
+            CopyFailed = true;
+            return;
+        }
+
+        _copyId = id;
+        CopyFailed = false;
+        IsPasswordCopied = true;
+    }
+
+    private bool CanCopyPassword(string? selection) => (selection ?? Password).Length > 0;
 
     /// <summary>
     /// Writes the draft: an edit keeps the <c>Id</c>, <c>CreatedAt</c> and every other field of the saved record; a new
@@ -312,6 +364,30 @@ public sealed partial class EntryDetailViewModel : PageViewModel
     /// <summary>Closes the delete confirmation without deleting.</summary>
     [RelayCommand]
     private void CancelDelete() => IsDeletePending = false;
+
+    /// <summary>Starts following the guard, so <see cref="IsPasswordCopied"/> turns false when the copy is cleared.</summary>
+    public override void OnNavigatedTo()
+    {
+        // Not twice, in case the page is shown again.
+        _clipboard.PropertyChanged -= OnClipboardChanged;
+        _clipboard.PropertyChanged += OnClipboardChanged;
+        UpdatePasswordCopied();
+    }
+
+    /// <summary>
+    /// Stops following the guard. The guard lives as long as the app, so this is what lets the page be collected.
+    /// </summary>
+    public override void OnNavigatedFrom() => _clipboard.PropertyChanged -= OnClipboardChanged;
+
+    private void OnClipboardChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ClipboardGuard.PendingCopy))
+        {
+            UpdatePasswordCopied();
+        }
+    }
+
+    private void UpdatePasswordCopied() => IsPasswordCopied = _copyId != 0 && _clipboard.PendingCopy == _copyId;
 
     partial void OnTitleChanged(string value) => OnDraftChanged(value, v => Title = v);
 

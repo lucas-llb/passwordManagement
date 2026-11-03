@@ -215,9 +215,9 @@ public sealed class AccessibilityE2ETests
         // value, so a screen reader hears the default and the limits without any text of WinUI's in its name.
         foreach (var expected in new[]
         {
-            "DetailUsername", "DetailPassword", "DetailShowPassword", "DetailGenerate", "DetailGeneratorLength",
-            "DetailGeneratorUppercase", "DetailGeneratorDigits", "DetailGeneratorSymbols", "DetailUrl", "DetailFolder",
-            "DetailNotes", "DetailFavorite", "DetailDelete", "DetailBack", "DetailTitle",
+            "DetailUsername", "DetailPassword", "DetailShowPassword", "DetailCopyPassword", "DetailGenerate",
+            "DetailGeneratorLength", "DetailGeneratorUppercase", "DetailGeneratorDigits", "DetailGeneratorSymbols",
+            "DetailUrl", "DetailFolder", "DetailNotes", "DetailFavorite", "DetailDelete", "DetailBack", "DetailTitle",
         })
         {
             app.PressKey(VirtualKeyShort.TAB);

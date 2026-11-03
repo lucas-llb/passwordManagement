@@ -116,6 +116,7 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "DetailNotes");
         AssertNameFromResources(app, "DetailPassword");
         AssertNameFromResources(app, "DetailShowPassword");
+        AssertNameFromResources(app, "DetailCopyPassword");
         AssertNameFromResources(app, "DetailGenerate");
         AssertNameFromResources(app, "DetailGeneratorLength");
         AssertNameFromResources(app, "DetailGeneratorUppercase");
@@ -146,6 +147,15 @@ public sealed class LocalizationE2ETests
         app.Toggle("DetailShowPassword");
         app.WaitGone("DetailPasswordText");
         app.WaitFor("DetailPassword");
+
+        // Copying shows the confirmation (no error). The value is the seed's fictitious password; the app takes it off
+        // the clipboard when it closes.
+        Assert.Null(app.Find("DetailPasswordCopied"));
+        Assert.Null(app.Find("DetailCopyFailed"));
+        app.Invoke("DetailCopyPassword");
+        AssertNameFromResources(app, "DetailPasswordCopied");
+        Assert.Null(app.Find("DetailCopyFailed"));
+        AssertEveryTextFromResourcesOrData(app, created, updated, GeneratorLengthText);
 
         // The delete confirmation, then cancelled.
         app.Invoke("DetailDelete");

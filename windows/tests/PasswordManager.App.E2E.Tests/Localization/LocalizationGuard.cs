@@ -15,7 +15,14 @@ internal static partial class LocalizationGuard
     // The Debug-only command-line switches the E2E tests pass to the app. A switch name is not UI text; matched exactly.
     private static readonly HashSet<string> DebugSwitches = new(StringComparer.Ordinal)
     {
-        "--vaults-dir", "--idle-timeout-seconds", "--lock-on-minimize",
+        "--vaults-dir", "--idle-timeout-seconds", "--lock-on-minimize", "--clipboard-clear-seconds",
+    };
+
+    // The names of the clipboard formats the app writes (W-22). A format name is a protocol identifier, not UI text;
+    // matched exactly.
+    private static readonly HashSet<string> ClipboardFormatNames = new(StringComparer.Ordinal)
+    {
+        "ExcludeClipboardContentFromMonitorProcessing",
     };
 
     // Properties that put text on screen or in front of a screen reader. In XAML their value must be a binding or come from an x:Uid, never a literal.
@@ -189,7 +196,8 @@ internal static partial class LocalizationGuard
         FollowsGetString(source, literal.Start)
         || IsInExceptionConstructor(source, literal.Start)
         || IsInNativeImportAttribute(source, literal.Start)
-        || DebugSwitches.Contains(source[literal.ContentStart..literal.ContentEnd]);
+        || DebugSwitches.Contains(source[literal.ContentStart..literal.ContentEnd])
+        || ClipboardFormatNames.Contains(source[literal.ContentStart..literal.ContentEnd]);
 
     // The code right before the literal, ignoring whitespace, is "GetString(".
     private static bool FollowsGetString(string source, int literalStart)
