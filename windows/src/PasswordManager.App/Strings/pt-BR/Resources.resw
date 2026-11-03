@@ -318,6 +318,45 @@
   <data name="ExportSuggestedFileName" xml:space="preserve">
     <value>cofre-exportado</value>
   </data>
+  <data name="ExportOpenCsv.Content" xml:space="preserve">
+    <value>Exportar em CSV, sem criptografia</value>
+  </data>
+  <data name="CsvExportTitle.Text" xml:space="preserve">
+    <value>Exportar em CSV</value>
+  </data>
+  <data name="CsvExportWarning.Text" xml:space="preserve">
+    <value>Atenção: o CSV não tem criptografia. Qualquer pessoa ou programa com acesso ao arquivo lê todas as senhas, usuários, URLs e notas deste perfil. Use-o só para importar em outro gerenciador (colunas compatíveis com Bitwarden e KeePass), não o abra em planilhas nem o guarde em pasta sincronizada com a nuvem, e apague-o logo depois. Para backup, use a exportação .pmvault.</value>
+  </data>
+  <data name="CsvExportAcknowledge.Content" xml:space="preserve">
+    <value>Entendo que qualquer pessoa com este arquivo pode ler todas as senhas.</value>
+  </data>
+  <data name="CsvExportPassword.Header" xml:space="preserve">
+    <value>Senha mestra</value>
+  </data>
+  <data name="CsvExportWrongPassword.Text" xml:space="preserve">
+    <value>Senha mestra incorreta.</value>
+  </data>
+  <data name="CsvExportSave.Content" xml:space="preserve">
+    <value>Escolher local e exportar CSV</value>
+  </data>
+  <data name="CsvExportProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Exportando em CSV</value>
+  </data>
+  <data name="CsvExportFailed.Text" xml:space="preserve">
+    <value>Não foi possível salvar o CSV. Escolha outro local e tente de novo.</value>
+  </data>
+  <data name="CsvExportVaultsFolder.Text" xml:space="preserve">
+    <value>Essa é a pasta de dados do app. Escolha outra pasta.</value>
+  </data>
+  <data name="CsvExportDone" xml:space="preserve">
+    <value>CSV salvo: {0}. Apague o arquivo assim que terminar de usá-lo.</value>
+  </data>
+  <data name="CsvExportFileTypeName" xml:space="preserve">
+    <value>CSV sem criptografia</value>
+  </data>
+  <data name="CsvExportSuggestedFileName" xml:space="preserve">
+    <value>senhas-sem-criptografia</value>
+  </data>
   <data name="KitTitle.Text" xml:space="preserve">
     <value>Kit de Recuperação</value>
   </data>

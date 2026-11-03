@@ -3,9 +3,10 @@ using System.Security.Cryptography;
 namespace PasswordManager.Core.Vault;
 
 /// <summary>
-/// The one Core entry point the UI uses for a profile's vault: create, unlock, lock, save, change the master password,
-/// export and import. It only composes <see cref="VaultFile"/>, <see cref="VaultHeader"/>, <see cref="KeySlot"/>,
-/// <see cref="VaultBody"/>, <see cref="MasterPassword"/> and <see cref="RecoveryKit"/>; it adds no cryptography.
+/// The one Core entry point the UI uses for a profile's vault: create, unlock, lock, save, change or verify the
+/// master password, export and import. It only composes <see cref="VaultFile"/>, <see cref="VaultHeader"/>,
+/// <see cref="KeySlot"/>, <see cref="VaultBody"/>, <see cref="MasterPassword"/> and <see cref="RecoveryKit"/>; it
+/// adds no cryptography.
 /// </summary>
 /// <remarks>
 /// <para>While unlocked, the session holds the Vault Key in a pinned buffer (the GC never moves or copies it), the
@@ -16,9 +17,9 @@ namespace PasswordManager.Core.Vault;
 /// <see cref="Lock"/> from another thread (for example, on a Windows session switch) waits for an in-flight write and
 /// never lets a body be sealed with a zeroed key. The gate also serializes writes, which <see cref="VaultFile"/>
 /// requires.</para>
-/// <para><see cref="Create"/>, <see cref="Unlock"/>, <see cref="ChangePassword"/>, <see cref="Export"/> and
-/// <see cref="Import"/> run Argon2id (about one second at the default parameters), so callers run them off the UI
-/// thread.</para>
+/// <para><see cref="Create"/>, <see cref="Unlock"/>, <see cref="ChangePassword"/>, <see cref="VerifyPassword"/>,
+/// <see cref="Export"/> and <see cref="Import"/> run Argon2id (about one second at the default parameters), so
+/// callers run them off the UI thread.</para>
 /// <para>Password and kit-text buffers are never modified, except the <c>kitText</c> output of <see cref="Create"/>;
 /// the caller owns and zeroes them. Exceptions never carry secrets or file content.</para>
 /// </remarks>
@@ -253,6 +254,37 @@ public sealed class VaultSession : IDisposable
             VaultFile.Write(VaultPath, newFile);
 
             _file = newFile;
+        }
+    }
+
+    /// <summary>
+    /// Checks that <paramref name="password"/> is the current master password, by unwrapping the type-1 slot of the
+    /// unlocked file (Argon2id and a valid AEAD tag; no password or hash is stored). The unwrapped key is zeroed at
+    /// once. Neither the session nor the disk changes.
+    /// </summary>
+    /// <remarks>Costs one Argon2id run at the slot's own parameters, so callers run it off the UI thread.</remarks>
+    /// <param name="password">The master password to check. Not modified; the caller zeroes it.</param>
+    /// <exception cref="ObjectDisposedException">The session is disposed.</exception>
+    /// <exception cref="InvalidOperationException">The session is locked.</exception>
+    /// <exception cref="ArgumentException"><paramref name="password"/> contains an invalid surrogate.</exception>
+    /// <exception cref="VaultAuthenticationException"><paramref name="password"/> is wrong; the session stays
+    /// unlocked.</exception>
+    public void VerifyPassword(ReadOnlySpan<char> password)
+    {
+        lock (_gate)
+        {
+            var file = RequireUnlockedFile();
+            var header = VaultHeader.Parse(file);
+
+            Span<byte> scratch = stackalloc byte[VaultFormat.KeySize];
+            try
+            {
+                KeySlot.UnwrapPasswordSlot(file, header.PasswordSlotOffset, password, scratch);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(scratch);
+            }
         }
     }
 

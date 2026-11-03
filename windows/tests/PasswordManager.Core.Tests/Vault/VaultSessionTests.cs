@@ -562,6 +562,92 @@ public class VaultSessionTests
         });
     }
 
+    // --- VerifyPassword ---
+
+    [Fact]
+    public void VerifyPassword_Correct_ChangesNeitherSessionNorDisk()
+    {
+        WithVault(path =>
+        {
+            var directory = Path.GetDirectoryName(path)!;
+            using var session = OpenSession(path);
+            var content = session.Content;
+
+            session.VerifyPassword(Password);
+
+            Assert.True(session.IsUnlocked);
+            Assert.Same(content, session.Content);
+            Assert.Equal(Vk, session.VaultKeyBufferForTesting);
+            Assert.Equal(VaultFull, File.ReadAllBytes(path));
+            Assert.Equal([path], Directory.GetFileSystemEntries(directory));
+        });
+    }
+
+    [Fact]
+    public void VerifyPassword_Wrong_ThrowsAndStaysUnlocked()
+    {
+        WithVault(path =>
+        {
+            var directory = Path.GetDirectoryName(path)!;
+            using var session = OpenSession(path);
+
+            AssertAuthenticationFailure(() => session.VerifyPassword(NewPassword));
+            AssertAuthenticationFailure(() => session.VerifyPassword(""));
+
+            Assert.True(session.IsUnlocked);
+            Assert.Equal(Content.Entries, session.Content.Entries);
+            Assert.Equal(Vk, session.VaultKeyBufferForTesting);
+            Assert.Equal(VaultFull, File.ReadAllBytes(path));
+            Assert.Equal([path], Directory.GetFileSystemEntries(directory));
+
+            session.VerifyPassword(Password);
+        });
+    }
+
+    [Fact]
+    public void VerifyPassword_AfterChangePassword_AcceptsOnlyNewPassword()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+
+            session.ChangePassword(Password, NewPassword);
+
+            session.VerifyPassword(NewPassword);
+            AssertAuthenticationFailure(() => session.VerifyPassword(Password));
+            Assert.True(session.IsUnlocked);
+        });
+    }
+
+    [Fact]
+    public void VerifyPassword_Locked_ThrowsInvalidOperation()
+    {
+        WithVault(path =>
+        {
+            using var session = new VaultSession(path, LowCost);
+
+            Assert.Throws<InvalidOperationException>(() => session.VerifyPassword(Password));
+
+            session.Unlock(Password);
+            session.Lock();
+
+            Assert.Throws<InvalidOperationException>(() => session.VerifyPassword(Password));
+            Assert.False(session.IsUnlocked);
+        });
+    }
+
+    [Fact]
+    public void VerifyPassword_Disposed_ThrowsObjectDisposed()
+    {
+        WithVault(path =>
+        {
+            var session = OpenSession(path);
+            session.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => session.VerifyPassword(Password));
+        });
+    }
+
     // --- Export ---
 
     [Fact]

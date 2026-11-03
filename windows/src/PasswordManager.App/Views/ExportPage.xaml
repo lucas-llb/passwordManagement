@@ -83,6 +83,13 @@
                         IsActive="{x:Bind ViewModel.ExportCommand.IsRunning, Mode=OneWay}"
                         Visibility="{x:Bind ViewModel.ExportCommand.IsRunning, Mode=OneWay}" />
                 </StackPanel>
+
+                <!--  The plaintext CSV is a deliberate extra step: the encrypted export above stays the default.  -->
+                <HyperlinkButton
+                    HorizontalAlignment="Left"
+                    AutomationProperties.AutomationId="ExportOpenCsv"
+                    x:Uid="ExportOpenCsv"
+                    Command="{x:Bind ViewModel.OpenCsvExportCommand}" />
             </StackPanel>
         </Grid>
     </ScrollViewer>

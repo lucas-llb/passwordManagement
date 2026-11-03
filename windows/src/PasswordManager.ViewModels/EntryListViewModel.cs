@@ -135,6 +135,38 @@ public sealed partial class EntryListViewModel : PageViewModel
     internal byte[] Export(ReadOnlySpan<char> password) => _session.Export(password);
 
     /// <summary>
+    /// Checks that <paramref name="password"/> is the master password of the open vault (Argon2id and a valid AEAD tag
+    /// on the vault slot). Nothing changes. It runs Argon2id, so callers run it off the UI thread.
+    /// </summary>
+    /// <param name="password">The master password. Not modified; the caller zeroes it.</param>
+    /// <exception cref="VaultAuthenticationException"><paramref name="password"/> is wrong.</exception>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked.</exception>
+    /// <exception cref="ArgumentException"><paramref name="password"/> contains an invalid surrogate.</exception>
+    internal void VerifyMasterPassword(ReadOnlySpan<char> password) => _session.VerifyPassword(password);
+
+    /// <summary>
+    /// Serializes the entries of the open vault as the bytes of a plaintext CSV. Nothing is written; the caller zeroes
+    /// the array after use.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked.</exception>
+    /// <exception cref="ArgumentException">A field contains an invalid surrogate.</exception>
+    internal byte[] ExportCsv() => VaultCsv.Serialize(_session.Content.Entries);
+
+    /// <summary>
+    /// The delay left before the next master password attempt is allowed on a password form of this vault, shared with
+    /// the unlock screen of the profile; zero when an attempt is allowed.
+    /// </summary>
+    internal TimeSpan PasswordRetryDelay => _throttle.RemainingDelay(_profile.Id);
+
+    /// <summary>Counts one more wrong master password for the profile, for the delay shared with the unlock screen.</summary>
+    internal void RecordPasswordFailure() => _throttle.RecordFailure(_profile.Id);
+
+    /// <summary>Forgets the wrong master passwords of the profile after a right one.</summary>
+    internal void RecordPasswordSuccess() => _throttle.RecordSuccess(_profile.Id);
+
+    /// <summary>
     /// Saves <paramref name="entry"/> into the vault: it replaces the entry with the same <c>Id</c> in place, or is
     /// appended. The write is synchronous and atomic; then the entries, the search index and the folders are rebuilt
     /// and the filter is applied again.

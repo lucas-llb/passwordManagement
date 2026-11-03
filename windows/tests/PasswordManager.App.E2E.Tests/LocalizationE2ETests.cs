@@ -291,6 +291,7 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "ExportConfirm");
         AssertNameFromResources(app, "ExportSave");
         AssertNameFromResources(app, "ExportBack", "NavBack");
+        AssertNameFromResources(app, "ExportOpenCsv");
         AssertEveryTextFromResourcesOrData(app);
 
         // The two refusals; the page empties both boxes after every attempt.
@@ -339,6 +340,72 @@ public sealed class LocalizationE2ETests
         var done = AppResources.Format("ExportDone", "backup.pmvault");
         app.WaitName("ExportDone", done);
         app.WaitGone("ExportFailed");
+        AssertEveryTextFromResourcesOrData(app, done);
+    }
+
+    [Fact]
+    public void CsvExportPage_TextsComeFromResources()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        Assert.Single(app.Items("ProfilesList")).Patterns.Invoke.Pattern.Invoke();
+        app.TypePassword(SeededVault.Password);
+        app.Invoke("UnlockButton");
+        app.WaitFor("EntriesList");
+        app.Invoke("EntriesExport");
+        app.WaitFor("ExportTitle");
+        app.Invoke("ExportOpenCsv");
+
+        // The box is empty, so the PasswordBox reveal button, named by WinUI, is not shown.
+        app.WaitFor("CsvExportTitle");
+        app.WaitGone("ExportTitle");
+        AssertNameFromResources(app, "CsvExportTitle");
+        AssertNameFromResources(app, "CsvExportWarning");
+        AssertNameFromResources(app, "CsvExportAcknowledge");
+        AssertNameFromResources(app, "CsvExportPassword");
+        AssertNameFromResources(app, "CsvExportSave");
+        AssertNameFromResources(app, "CsvExportBack", "NavBack");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // A wrong master password: the error and the countdown of the delay it starts (the text of the unlock screen).
+        app.Toggle("CsvExportAcknowledge");
+        app.SetValue("CsvExportPassword", "senha-errada-ficticia");
+        app.Invoke("CsvExportSave");
+        AssertNameFromResources(app, "CsvExportWrongPassword");
+        var countdown = AppResources.Format("UnlockRetryCountdown", 1);
+        app.WaitName("CsvExportRetryCountdown", countdown);
+        AssertEveryTextFromResourcesOrData(app, countdown);
+        app.WaitGone("CsvExportRetryCountdown");
+        app.WaitEnabled("CsvExportSave");
+
+        // The ring is shown while the save dialog is open. While it spins, WinUI puts its own busy state, in the system
+        // language, before the name, so the name must end with the resw value. The dialog itself is Windows', also in the
+        // system language, so the sweeps run only once it is closed.
+        var exports = Directory.CreateDirectory(Path.Combine(app.VaultsDirectory, "exports")).FullName;
+        app.SetValue("CsvExportPassword", SeededVault.Password);
+        app.Invoke("CsvExportSave");
+        app.WaitFileDialog();
+        Assert.EndsWith(" " + AppResources.ExpectedName("CsvExportProgress"), app.WaitFor("CsvExportProgress").Name, StringComparison.Ordinal);
+        app.SaveInFileDialog(Path.Combine(app.VaultsDirectory, "recusado.csv"));
+        AssertNameFromResources(app, "CsvExportVaultsFolder");
+        app.WaitGone("CsvExportWrongPassword");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // A folder in the way of the temp file (<name>.tmp) makes the write fail.
+        Directory.CreateDirectory(Path.Combine(exports, "falha.csv.tmp"));
+        app.SetValue("CsvExportPassword", SeededVault.Password);
+        app.Invoke("CsvExportSave");
+        app.SaveInFileDialog(Path.Combine(exports, "falha.csv"));
+        AssertNameFromResources(app, "CsvExportFailed");
+        app.WaitGone("CsvExportVaultsFolder");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // The confirmation is the resw format with the file name.
+        app.SetValue("CsvExportPassword", SeededVault.Password);
+        app.Invoke("CsvExportSave");
+        app.SaveInFileDialog(Path.Combine(exports, "senhas.csv"));
+        var done = AppResources.Format("CsvExportDone", "senhas.csv");
+        app.WaitName("CsvExportDone", done);
+        app.WaitGone("CsvExportFailed");
         AssertEveryTextFromResourcesOrData(app, done);
     }
 

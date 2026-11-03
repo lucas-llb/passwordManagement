@@ -353,13 +353,14 @@ public sealed class AccessibilityE2ETests
         app.WaitFocus("ExportPassword");
         AssertEveryFocusableElementIsNamed(app);
 
-        foreach (var expected in new[] { "ExportConfirm", "ExportSave", "ExportBack", "ExportPassword" })
+        // The link to the plaintext CSV export comes last, after the action row.
+        foreach (var expected in new[] { "ExportConfirm", "ExportSave", "ExportBack", "ExportOpenCsv", "ExportPassword" })
         {
             app.PressKey(VirtualKeyShort.TAB);
             app.WaitFocus(expected);
         }
 
-        foreach (var expected in new[] { "ExportBack", "ExportSave", "ExportConfirm", "ExportPassword" })
+        foreach (var expected in new[] { "ExportOpenCsv", "ExportBack", "ExportSave", "ExportConfirm", "ExportPassword" })
         {
             app.PressChord(VirtualKeyShort.SHIFT, VirtualKeyShort.TAB);
             app.WaitFocus(expected);
@@ -391,6 +392,71 @@ public sealed class AccessibilityE2ETests
         app.WaitFor("EntriesList");
         app.WaitGone("ExportTitle");
         app.WaitFocus(EntryItem(0));
+    }
+
+    [Fact]
+    public void CsvExport_TabEscape_WorkWithoutMouse()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        OpenProfileByKeyboard(app);
+        UnlockByKeyboard(app, SeededVault.Password);
+        app.WaitFocus(EntryItem(0));
+
+        // List, then Export, then the link to the CSV after the action row of the export page.
+        foreach (var expected in new[] { "EntriesNew", "EntriesExport" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("ExportTitle");
+        app.WaitGone("EntriesList");
+        app.WaitFocus("ExportPassword");
+        foreach (var expected in new[] { "ExportConfirm", "ExportSave", "ExportBack", "ExportOpenCsv" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Enter on the link opens the page with the focus on the acknowledgement; Save waits for it.
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("CsvExportTitle");
+        app.WaitGone("ExportTitle");
+        app.WaitFocus("CsvExportAcknowledge");
+        app.WaitEnabled("CsvExportSave", expected: false);
+        AssertEveryFocusableElementIsNamed(app);
+
+        // Space checks the box, and Save is enabled. Tab then goes Password, Save, Back and wraps to the box.
+        app.PressKey(VirtualKeyShort.SPACE);
+        app.WaitEnabled("CsvExportSave");
+        Assert.True(app.IsToggled("CsvExportAcknowledge"));
+        foreach (var expected in new[] { "CsvExportPassword", "CsvExportSave", "CsvExportBack", "CsvExportAcknowledge" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        foreach (var expected in new[] { "CsvExportBack", "CsvExportSave", "CsvExportPassword", "CsvExportAcknowledge" })
+        {
+            app.PressChord(VirtualKeyShort.SHIFT, VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Enter in the password box exports, as the button does: a wrong master password shows its error and opens no dialog.
+        app.SetValue("CsvExportPassword", "senha-errada-ficticia");
+        app.WaitFor("CsvExportPassword").Focus();
+        app.WaitFocus("CsvExportPassword");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("CsvExportWrongPassword");
+        Assert.Null(app.FindFileDialog());
+        Assert.NotNull(app.Find("CsvExportTitle"));
+
+        // Escape is Back: the export page gets the focus on its password box.
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitFor("ExportTitle");
+        app.WaitGone("CsvExportTitle");
+        app.WaitFocus("ExportPassword");
     }
 
     [Fact]

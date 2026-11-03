@@ -89,6 +89,63 @@ public sealed class NavigationFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task OpenCsvExport_PushesCsvPage_BackReturnsToExport()
+    {
+        var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
+        var navigation = new NavigationService();
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
+        await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
+        var list = Assert.IsType<EntryListViewModel>(navigation.Current);
+        list.OpenExportCommand.Execute(null);
+        var export = Assert.IsType<ExportViewModel>(navigation.Current);
+
+        // Export -> CSV: the stack is [List, Export, CSV].
+        export.OpenCsvExportCommand.Execute(null);
+        var csv = Assert.IsType<CsvExportViewModel>(navigation.Current);
+        Assert.True(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+
+        // CSV -> Export, then Export -> List: the vault stays open all the way.
+        csv.GoBackCommand.Execute(null);
+        Assert.Same(export, navigation.Current);
+        Assert.True(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+        export.GoBackCommand.Execute(null);
+        Assert.Same(list, navigation.Current);
+        Assert.False(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+        Assert.NotEmpty(list.Entries);
+    }
+
+    [Fact]
+    public async Task Lock_FromCsvExportPage_EndsOnUnlockWithProfilesBehind()
+    {
+        var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
+        var navigation = new NavigationService();
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
+        await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
+        var list = Assert.IsType<EntryListViewModel>(navigation.Current);
+        list.OpenExportCommand.Execute(null);
+        Assert.IsType<ExportViewModel>(navigation.Current).OpenCsvExportCommand.Execute(null);
+        var csv = Assert.IsType<CsvExportViewModel>(navigation.Current);
+        csv.Acknowledged = true;
+
+        // The lock replaces the whole stack, export and CSV pages included, and the page forgets the acknowledgement.
+        list.LockCommand.Execute(null);
+
+        var unlock = Assert.IsType<UnlockViewModel>(navigation.Current);
+        Assert.Equal(alice, unlock.Profile);
+        Assert.False(list.IsOpen);
+        Assert.Empty(list.Entries);
+        Assert.False(csv.Acknowledged);
+        Assert.True(navigation.GoBack());
+        Assert.IsType<ProfilesViewModel>(navigation.Current);
+        Assert.False(navigation.CanGoBack);
+    }
+
+    [Fact]
     public async Task Lock_FromExportPage_EndsOnUnlockWithProfilesBehind()
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));

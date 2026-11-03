@@ -79,7 +79,7 @@ public sealed partial class ExportPage : Page
         ConfirmInput.Password = string.Empty;
         try
         {
-            var picker = new WindowsExportFilePicker(XamlRoot.ContentIslandEnvironment.AppWindowId);
+            var picker = WindowsExportFilePicker.ForVault(XamlRoot.ContentIslandEnvironment.AppWindowId);
             await ViewModel.ExportCommand.ExecuteAsync(new ExportRequest(password, confirmation, picker));
         }
         finally

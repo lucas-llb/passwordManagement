@@ -34,12 +34,13 @@ public sealed partial class ExportViewModel : PageViewModel
         _vault = vault;
         _navigation = navigation;
 
-        // Back is blocked while an export runs, including the time the save dialog is open.
+        // Back, and the way to the CSV page, are blocked while an export runs, including the time the save dialog is open.
         ExportCommand.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(IAsyncRelayCommand.IsRunning))
             {
                 GoBackCommand.NotifyCanExecuteChanged();
+                OpenCsvExportCommand.NotifyCanExecuteChanged();
             }
         };
     }
@@ -89,7 +90,7 @@ public sealed partial class ExportViewModel : PageViewModel
                 return;
             }
 
-            if (IsInVaultsFolder(path))
+            if (ExportDestination.IsInVaultsFolder(path, _vault.VaultsDirectory))
             {
                 Outcome = ExportOutcome.VaultsFolder;
                 return;
@@ -139,18 +140,17 @@ public sealed partial class ExportViewModel : PageViewModel
 
     private bool CanGoBack() => !ExportCommand.IsRunning;
 
-    // True when the file would sit directly in the vaults folder, where it could replace <id>.pmvault or profiles.json.
-    // Subfolders are fine. Both sides are full paths without a trailing separator; Windows paths ignore case.
-    private bool IsInVaultsFolder(string path)
+    /// <summary>
+    /// Opens the CSV export page, above this one; Back returns here. It is a deliberate extra step, so the encrypted
+    /// export stays the default. Not available while an export runs; a direct <c>Execute</c> is ignored in that state
+    /// as well.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanGoBack))]
+    private void OpenCsvExport()
     {
-        var folder = Path.GetDirectoryName(Path.GetFullPath(path));
-        if (folder is null)
+        if (CanGoBack())
         {
-            return false;
+            _navigation.NavigateTo(new CsvExportViewModel(_vault, _navigation));
         }
-
-        var vaults = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_vault.VaultsDirectory));
-
-        return string.Equals(Path.TrimEndingDirectorySeparator(folder), vaults, StringComparison.OrdinalIgnoreCase);
     }
 }
