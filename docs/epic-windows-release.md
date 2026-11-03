@@ -106,7 +106,7 @@ Toda a lógica fica em `PasswordManager.Core`, testável sem UI.
 
 | ID | História | Critérios de aceite |
 |---|---|---|
-| W-23 | Exportação `.pmvault` | Senha de exportação própria; Vault Key nova; `FileSavePicker`; nunca grava em temp/cache. |
+| W-23 | Exportação `.pmvault` | Senha de exportação própria; Vault Key nova; `FileSavePicker`; nunca grava em temp/cache; botão Exportar na lista e página própria, com a senha digitada duas vezes (mínimo de 12 caracteres); grava só no local escolhido, com `.tmp` ao lado e sem `.bak`; recusa a pasta de cofres do app; testado no Core, nos ViewModels e no E2E (Debug). |
 | W-24 | Exportação CSV | Pede a senha mestra de novo; aviso claro de arquivo legível; colunas `name,url,username,password,notes,folder`; escaping correto (vírgula, aspas, quebra de linha). |
 | W-25 | Importação | `.pmvault` próprio e CSV Bitwarden/KeePass; validação completa; prévia antes de gravar; tratamento de duplicados definido (pular, duplicar ou substituir). |
 | W-26 | Tela de configurações | Tempo de inatividade, bloquear ao minimizar, trocar senha mestra, gerar novo Kit de Recuperação, exportar/importar. Persistência fora do cofre só para preferências não sensíveis. |

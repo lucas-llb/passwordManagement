@@ -89,6 +89,7 @@ public sealed class LocalizationE2ETests
         Assert.Equal(SeededVault.Entries.Length, items.Length);
         AssertNameFromResources(app, "EntriesTitle");
         AssertNameFromResources(app, "EntriesNew");
+        AssertNameFromResources(app, "EntriesExport");
         AssertNameFromResources(app, "EntriesLock");
         AssertNameFromResources(app, "EntriesList");
         AssertNameFromResources(app, "EntriesSearch");
@@ -268,6 +269,77 @@ public sealed class LocalizationE2ETests
         AssertEveryTextFromResourcesOrData(app, SeededVault.ProfileName);
         app.InvokeInDialog("ProfileDeleteDialog", "CloseButton");
         app.WaitDialogGone("ProfileDeleteDialog");
+    }
+
+    [Fact]
+    public void ExportPage_TextsComeFromResources()
+    {
+        const string exportPassword = "Senha de exportação fictícia 2026";
+        using var app = AppSession.Launch(SeededVault.Seed);
+        Assert.Single(app.Items("ProfilesList")).Patterns.Invoke.Pattern.Invoke();
+        app.TypePassword(SeededVault.Password);
+        app.Invoke("UnlockButton");
+        app.WaitFor("EntriesList");
+        app.Invoke("EntriesExport");
+
+        // Both boxes empty, so the PasswordBox reveal buttons, named by WinUI, are not shown.
+        app.WaitFor("ExportTitle");
+        app.WaitGone("EntriesList");
+        AssertNameFromResources(app, "ExportTitle");
+        AssertNameFromResources(app, "ExportIntro");
+        AssertNameFromResources(app, "ExportPassword");
+        AssertNameFromResources(app, "ExportConfirm");
+        AssertNameFromResources(app, "ExportSave");
+        AssertNameFromResources(app, "ExportBack", "NavBack");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // The two refusals; the page empties both boxes after every attempt.
+        app.SetValue("ExportPassword", "curta-ficti");
+        app.SetValue("ExportConfirm", "curta-ficti");
+        app.Invoke("ExportSave");
+        AssertNameFromResources(app, "ExportPasswordTooShort");
+        AssertEveryTextFromResourcesOrData(app);
+
+        app.SetValue("ExportPassword", "senha-ficticia-um-123");
+        app.SetValue("ExportConfirm", "senha-ficticia-dois-456");
+        app.Invoke("ExportSave");
+        AssertNameFromResources(app, "ExportPasswordMismatch");
+        app.WaitGone("ExportPasswordTooShort");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // The ring is shown while the save dialog is open. While it spins, WinUI puts its own busy state, in the system
+        // language, before the name, so the name must end with the resw value. The dialog itself is Windows', also in the
+        // system language, so the sweeps run only once it is closed.
+        var exports = Directory.CreateDirectory(Path.Combine(app.VaultsDirectory, "exports")).FullName;
+        app.SetValue("ExportPassword", exportPassword);
+        app.SetValue("ExportConfirm", exportPassword);
+        app.Invoke("ExportSave");
+        app.WaitFileDialog();
+        Assert.EndsWith(" " + AppResources.ExpectedName("ExportProgress"), app.WaitFor("ExportProgress").Name, StringComparison.Ordinal);
+        app.SaveInFileDialog(Path.Combine(app.VaultsDirectory, "recusado.pmvault"));
+        AssertNameFromResources(app, "ExportVaultsFolder");
+        app.WaitGone("ExportPasswordMismatch");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // A folder in the way of the temp file (<name>.tmp) makes the write fail.
+        Directory.CreateDirectory(Path.Combine(exports, "falha.pmvault.tmp"));
+        app.SetValue("ExportPassword", exportPassword);
+        app.SetValue("ExportConfirm", exportPassword);
+        app.Invoke("ExportSave");
+        app.SaveInFileDialog(Path.Combine(exports, "falha.pmvault"));
+        AssertNameFromResources(app, "ExportFailed");
+        app.WaitGone("ExportVaultsFolder");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // The confirmation is the resw format with the file name.
+        app.SetValue("ExportPassword", exportPassword);
+        app.SetValue("ExportConfirm", exportPassword);
+        app.Invoke("ExportSave");
+        app.SaveInFileDialog(Path.Combine(exports, "backup.pmvault"));
+        var done = AppResources.Format("ExportDone", "backup.pmvault");
+        app.WaitName("ExportDone", done);
+        app.WaitGone("ExportFailed");
+        AssertEveryTextFromResourcesOrData(app, done);
     }
 
     [Fact]

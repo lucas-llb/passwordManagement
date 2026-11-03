@@ -57,4 +57,36 @@ public static class VaultFile
 
         AtomicFile.Write(fullPath, contents, keepBackup: true);
     }
+
+    /// <summary>
+    /// Validates an export and writes it atomically to <paramref name="path"/>, the place the user chose. Unlike
+    /// <see cref="Write"/>, it keeps no <c>.bak</c> copy and creates no folder.
+    /// </summary>
+    /// <remarks>
+    /// The export must hold exactly one slot, of type 1 (the export password). The temp file is <c>&lt;path&gt;.tmp</c>
+    /// in the same folder as <paramref name="path"/>, never in a temp or cache folder.
+    /// </remarks>
+    /// <param name="path">Full or relative path chosen by the user. Its directory must exist.</param>
+    /// <param name="contents">The whole export bytes. Not modified.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is empty, or <paramref name="contents"/> does not hold
+    /// exactly one type-1 slot; the disk is not touched.</exception>
+    /// <exception cref="VaultFormatException"><paramref name="contents"/> is not a valid v1 vault file; the disk is not touched.</exception>
+    /// <exception cref="IOException">The write failed (for example, the folder does not exist or the target is locked);
+    /// the original file is unchanged.</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was denied; the original file is unchanged.</exception>
+    public static void WriteExport(string path, ReadOnlySpan<byte> contents)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        var fullPath = Path.GetFullPath(path);
+        var header = VaultHeader.Parse(contents);
+
+        if (header.Slots.Count != 1 || header.RecoveryKitSlotOffset is not null)
+        {
+            throw new ArgumentException("An export must hold exactly one password slot.", nameof(contents));
+        }
+
+        AtomicFile.Write(fullPath, contents, keepBackup: false);
+    }
 }

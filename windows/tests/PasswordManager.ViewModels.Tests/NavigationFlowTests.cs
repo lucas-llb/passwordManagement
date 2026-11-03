@@ -64,6 +64,55 @@ public sealed class NavigationFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task OpenExport_PushesExportPage_BackReturnsToList()
+    {
+        var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
+        var navigation = new NavigationService();
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        var profilesPage = Assert.IsType<ProfilesViewModel>(navigation.Current);
+        profilesPage.OpenProfileCommand.Execute(alice);
+        await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
+        var list = Assert.IsType<EntryListViewModel>(navigation.Current);
+
+        // List -> Export: the stack is [List, Export].
+        list.OpenExportCommand.Execute(null);
+        var export = Assert.IsType<ExportViewModel>(navigation.Current);
+        Assert.True(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+
+        // Export -> List: the vault is still open and the list is the root again.
+        export.GoBackCommand.Execute(null);
+        Assert.Same(list, navigation.Current);
+        Assert.False(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+        Assert.NotEmpty(list.Entries);
+    }
+
+    [Fact]
+    public async Task Lock_FromExportPage_EndsOnUnlockWithProfilesBehind()
+    {
+        var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
+        var navigation = new NavigationService();
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
+        await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
+        var list = Assert.IsType<EntryListViewModel>(navigation.Current);
+        list.OpenExportCommand.Execute(null);
+        Assert.IsType<ExportViewModel>(navigation.Current);
+
+        // The lock the window and the auto-lock use is the list's: it replaces the whole stack, export page included.
+        list.LockCommand.Execute(null);
+
+        var unlock = Assert.IsType<UnlockViewModel>(navigation.Current);
+        Assert.Equal(alice, unlock.Profile);
+        Assert.False(list.IsOpen);
+        Assert.Empty(list.Entries);
+        Assert.True(navigation.GoBack());
+        Assert.IsType<ProfilesViewModel>(navigation.Current);
+        Assert.False(navigation.CanGoBack);
+    }
+
+    [Fact]
     public async Task Flow_ProfilesUnlockListDetail_CopyGoesThroughTheSharedGuard()
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));

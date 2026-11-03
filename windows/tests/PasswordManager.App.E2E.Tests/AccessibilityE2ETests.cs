@@ -198,9 +198,12 @@ public sealed class AccessibilityE2ETests
         app.PressKey(VirtualKeyShort.UP);
         app.WaitFocus(EntryItem(0));
 
-        // The list is the last stop, so Tab wraps to the first control: New entry and Lock, then the search and the two
-        // filters in document order, and back to the list.
-        foreach (var expected in new[] { "EntriesNew", "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly", "EntriesFolder", EntryItem(0) })
+        // The list is the last stop, so Tab wraps to the first control: New entry, Export and Lock, then the search and
+        // the two filters in document order, and back to the list.
+        foreach (var expected in new[]
+        {
+            "EntriesNew", "EntriesExport", "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly", "EntriesFolder", EntryItem(0),
+        })
         {
             app.PressKey(VirtualKeyShort.TAB);
             app.WaitFocus(expected);
@@ -286,6 +289,8 @@ public sealed class AccessibilityE2ETests
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesNew");
         app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("EntriesExport");
+        app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesLock");
         app.PressKey(VirtualKeyShort.RETURN);
         app.WaitFor("UnlockPassword");
@@ -327,6 +332,65 @@ public sealed class AccessibilityE2ETests
         app.WaitFocus("DetailDelete");
         Assert.NotNull(app.Find("DetailTitle"));
         Assert.Null(app.Find("EntriesList"));
+    }
+
+    [Fact]
+    public void Export_TabEscape_WorkWithoutMouse()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        OpenProfileByKeyboard(app);
+        UnlockByKeyboard(app, SeededVault.Password);
+        app.WaitFocus(EntryItem(0));
+
+        // Export sits between New entry and Lock; Enter on it opens the page with the focus on the password.
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("EntriesNew");
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("EntriesExport");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("ExportTitle");
+        app.WaitGone("EntriesList");
+        app.WaitFocus("ExportPassword");
+        AssertEveryFocusableElementIsNamed(app);
+
+        foreach (var expected in new[] { "ExportConfirm", "ExportSave", "ExportBack", "ExportPassword" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        foreach (var expected in new[] { "ExportBack", "ExportSave", "ExportConfirm", "ExportPassword" })
+        {
+            app.PressChord(VirtualKeyShort.SHIFT, VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Enter in the confirmation exports, as the button does: a refused password shows its error and stays on the page.
+        app.SetValue("ExportPassword", "curta-ficti");
+        app.SetValue("ExportConfirm", "curta-ficti");
+        app.WaitFor("ExportConfirm").Focus();
+        app.WaitFocus("ExportConfirm");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("ExportPasswordTooShort");
+        Assert.Null(app.FindFileDialog());
+        Assert.NotNull(app.Find("ExportTitle"));
+
+        // A valid one opens the save dialog, canceled here through UI Automation (the dialog is Windows', not the app's).
+        app.SetValue("ExportPassword", "frase-ficticia-exportacao");
+        app.SetValue("ExportConfirm", "frase-ficticia-exportacao");
+        app.WaitFor("ExportConfirm").Focus();
+        app.WaitFocus("ExportConfirm");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.CancelFileDialog();
+        app.WaitEnabled("ExportBack");
+
+        // Escape is Back: the list gets the focus back as it does from any page above it, on its first entry here.
+        app.WaitFor("ExportPassword").Focus();
+        app.WaitFocus("ExportPassword");
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitFor("EntriesList");
+        app.WaitGone("ExportTitle");
+        app.WaitFocus(EntryItem(0));
     }
 
     [Fact]
