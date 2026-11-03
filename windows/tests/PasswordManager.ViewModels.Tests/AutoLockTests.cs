@@ -27,7 +27,7 @@ public sealed class AutoLockTests : IDisposable
     // Profiles -> Unlock, the way the app gets there.
     private (ProfilesViewModel ProfilesPage, UnlockViewModel Unlock) OpenUnlockOf(Profile profile)
     {
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
         _navigation.ResetTo(profilesPage);
         profilesPage.OpenProfileCommand.Execute(profile);
 
@@ -116,7 +116,7 @@ public sealed class AutoLockTests : IDisposable
     {
         var autoLock = CreateAutoLock();
         var profile = CreateProfile();
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
 
         _navigation.ResetTo(profilesPage);
         Assert.False(autoLock.IsVaultOpen);
@@ -299,7 +299,7 @@ public sealed class AutoLockTests : IDisposable
     {
         var autoLock = CreateAutoLock(new AutoLockOptions(Timeout, lockOnMinimize: true));
         CreateProfile();
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
         _navigation.ResetTo(profilesPage);
         var navigated = 0;
         _navigation.Navigated += (_, _) => navigated++;

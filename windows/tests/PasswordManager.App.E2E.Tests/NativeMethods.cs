@@ -9,7 +9,7 @@ namespace PasswordManager.App.E2E.Tests;
 // The few Win32 calls the E2E tests need and FlaUI does not offer: the foreground check that guards every keystroke,
 // the sequence that brings the app window to the front, the settings broadcast of the theme test, the display
 // affinity, window rect and window move of the capture protection test, and the session message, minimize, restore
-// and injected mouse move of the auto-lock test.
+// and injected mouse move of the auto-lock test, and the clipboard reads of the clipboard test.
 internal static partial class NativeMethods
 {
     public const nint HWND_BROADCAST = 0xFFFF;
@@ -33,6 +33,7 @@ internal static partial class NativeMethods
     public const uint MOUSEEVENTF_MOVE = 0x0001;
     public const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;
     public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
+    public const uint CF_UNICODETEXT = 13;
 
     [LibraryImport("user32.dll")]
     public static partial nint GetForegroundWindow();
@@ -88,6 +89,40 @@ internal static partial class NativeMethods
 
     [LibraryImport("user32.dll", SetLastError = true)]
     public static partial uint SendInput(uint count, [In] INPUT[] inputs, int size);
+
+    // The Win32 clipboard, read (never written) by SystemClipboard. With a NULL owner, SetClipboardData fails, but
+    // OpenClipboard, EmptyClipboard and every read work.
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool OpenClipboard(nint hWndNewOwner);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool CloseClipboard();
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EmptyClipboard();
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsClipboardFormatAvailable(uint format);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    public static partial nint GetClipboardData(uint format);
+
+    [LibraryImport("user32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    public static partial uint RegisterClipboardFormatW(string format);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    public static partial nint GlobalLock(nint hMem);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GlobalUnlock(nint hMem);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    public static partial nuint GlobalSize(nint hMem);
 
     // A plain SetForegroundWindow is refused when the calling process does not own the foreground; attaching this
     // thread's input to the foreground window's thread lifts that restriction for the duration of the call.

@@ -44,11 +44,13 @@
                 <!--
                     The password is hidden by default. Only one of the two boxes is visible, and a collapsed element is not in the
                     UI Automation tree, so the password can be read through the tree only after "Mostrar senha". The PasswordBox has
-                    no peek button of its own (Hidden): the toggle is the only way to show it.
+                    no peek button of its own (Hidden): the toggle is the only way to show it. "Copiar senha" copies the whole
+                    draft password without showing it, and Ctrl+C on the shown password goes through the same command (code-behind).
                 -->
                 <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Grid>
@@ -61,6 +63,8 @@
                         <TextBox
                             AutomationProperties.AutomationId="DetailPasswordText"
                             x:Uid="DetailPasswordText"
+                            CopyingToClipboard="OnPasswordCopying"
+                            CuttingToClipboard="OnPasswordCutting"
                             IsSpellCheckEnabled="False"
                             IsTextPredictionEnabled="False"
                             Text="{x:Bind ViewModel.Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -72,7 +76,23 @@
                         x:Uid="DetailShowPassword"
                         VerticalAlignment="Bottom"
                         IsChecked="{x:Bind ViewModel.IsPasswordVisible, Mode=TwoWay}" />
+                    <Button
+                        Grid.Column="2"
+                        AutomationProperties.AutomationId="DetailCopyPassword"
+                        x:Uid="DetailCopyPassword"
+                        VerticalAlignment="Bottom"
+                        Command="{x:Bind ViewModel.CopyPasswordCommand}" />
                 </Grid>
+                <TextBlock
+                    AutomationProperties.AutomationId="DetailPasswordCopied"
+                    x:Uid="DetailPasswordCopied"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:EntryDetailPage.ShowWhenCopied(ViewModel.IsPasswordCopied, ViewModel.CopyFailed), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="DetailCopyFailed"
+                    x:Uid="DetailCopyFailed"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind ViewModel.CopyFailed, Mode=OneWay}" />
 
                 <!--
                     The generator writes a new password into the draft (hidden stays hidden) and keeps the focus on its button.

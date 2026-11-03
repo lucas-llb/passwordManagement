@@ -27,10 +27,13 @@ public partial class App : Application
         // Before the window, so it sees every navigation; nothing is persisted yet (the settings screen comes later).
         var autoLock = new AutoLock(navigation, TimeProvider.System, ResolveAutoLockOptions());
 
-        _window = new MainWindow(navigation, autoLock);
+        // Before the window, which runs its timer, and shared with the pages, which copy through it (W-22).
+        var clipboard = new ClipboardGuard(new WindowsClipboard(), TimeProvider.System, ResolveClipboardClearAfter());
+
+        _window = new MainWindow(navigation, autoLock, clipboard);
         _window.Activate();
 
-        navigation.ResetTo(new ProfilesViewModel(repository, navigation, throttle));
+        navigation.ResetTo(new ProfilesViewModel(repository, navigation, throttle, clipboard));
     }
 
     // Debug builds only: the E2E tests pass --vaults-dir <absolute folder> so they never touch the real vaults folder.
@@ -77,5 +80,27 @@ public partial class App : Application
 #else
         return AutoLockOptions.Default;
 #endif
+    }
+
+    // Debug builds only: the E2E tests pass --clipboard-clear-seconds <n> (n > 0) so they do not wait 30 seconds. A bad
+    // value crashes the launch instead of falling back to the default.
+    private static TimeSpan ResolveClipboardClearAfter()
+    {
+#if DEBUG
+        var arguments = Environment.GetCommandLineArgs();
+        var index = Array.IndexOf(arguments, "--clipboard-clear-seconds");
+        if (index >= 0)
+        {
+            if (index + 1 >= arguments.Length
+                || !int.TryParse(arguments[index + 1], NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
+                || seconds <= 0)
+            {
+                throw new InvalidOperationException("--clipboard-clear-seconds needs a whole number of seconds above zero.");
+            }
+
+            return TimeSpan.FromSeconds(seconds);
+        }
+#endif
+        return ClipboardGuard.DefaultClearAfter;
     }
 }

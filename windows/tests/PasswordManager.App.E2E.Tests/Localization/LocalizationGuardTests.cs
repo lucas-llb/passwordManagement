@@ -106,6 +106,8 @@ public sealed class LocalizationGuardTests
             var index = Array.IndexOf(arguments, "--vaults-dir");
             var idle = Array.IndexOf(arguments, "--idle-timeout-seconds");
             var minimize = arguments.Contains("--lock-on-minimize");
+            var clipboard = Array.IndexOf(arguments, "--clipboard-clear-seconds");
+            private const string Monitor = "ExcludeClipboardContentFromMonitorProcessing";
             [LibraryImport("user32.dll", SetLastError = true)]
             [DllImport("user32.dll", EntryPoint = "SetWindowDisplayAffinity")]
             // "comment"
@@ -122,7 +124,17 @@ public sealed class LocalizationGuardTests
     [InlineData("""var minimize = arguments.Contains("--lock-on-minimize2");""")]
     [InlineData("""var idle = Array.IndexOf(arguments, "--idle-timeout");""")]
     [InlineData("""var index = Array.IndexOf(arguments, " --vaults-dir");""")]
+    [InlineData("""var clear = Array.IndexOf(arguments, "--clipboard-clear");""")]
     public void FindCodeLiterals_NearMissOfADebugSwitch_IsReported(string source)
+    {
+        Assert.Single(LocalizationGuard.FindCodeLiterals(source));
+    }
+
+    [Theory]
+    [InlineData("""private const string Monitor = "ExcludeClipboardContent";""")]
+    [InlineData("""private const string Monitor = "excludeclipboardcontentfrommonitorprocessing";""")]
+    [InlineData("""private const string Monitor = "ExcludeClipboardContentFromMonitorProcessing ";""")]
+    public void FindCodeLiterals_NearMissOfAClipboardFormatName_IsReported(string source)
     {
         Assert.Single(LocalizationGuard.FindCodeLiterals(source));
     }

@@ -27,7 +27,7 @@ public sealed class UnlockViewModelTests : IDisposable
 
     private (Profile Profile, ProfilesViewModel ProfilesPage, UnlockViewModel Unlock) OpenUnlockOf(Profile profile)
     {
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
         _navigation.ResetTo(profilesPage);
         profilesPage.OpenProfileCommand.Execute(profile);
 
@@ -184,11 +184,13 @@ public sealed class UnlockViewModelTests : IDisposable
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password);
         var repository = _profiles.Repository;
         var throttle = _profiles.Throttle;
+        var clipboard = _profiles.Clipboard;
 
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(null!, repository, _navigation, throttle));
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, null!, _navigation, throttle));
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, null!, throttle));
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, _navigation, null!));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(null!, repository, _navigation, throttle, clipboard));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, null!, _navigation, throttle, clipboard));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, null!, throttle, clipboard));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, _navigation, null!, clipboard));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, _navigation, throttle, null!));
     }
 
     [Fact]

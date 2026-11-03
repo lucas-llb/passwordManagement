@@ -44,12 +44,13 @@ public sealed class CreateProfileViewModelTests : IDisposable
         ProfileRepository? repository = null)
     {
         repository ??= _profiles.Repository;
-        var profilesPage = new ProfilesViewModel(repository, _navigation, _profiles.Throttle);
+        var profilesPage = new ProfilesViewModel(repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
         _navigation.ResetTo(profilesPage);
         var create = new CreateProfileViewModel(
             repository,
             _navigation,
             _profiles.Throttle,
+            _profiles.Clipboard,
             parameters ?? TestProfiles.LowCost);
         _navigation.NavigateTo(create);
 
@@ -90,10 +91,12 @@ public sealed class CreateProfileViewModelTests : IDisposable
     {
         var repository = _profiles.Repository;
         var throttle = _profiles.Throttle;
+        var clipboard = _profiles.Clipboard;
 
-        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(null!, _navigation, throttle));
-        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(repository, null!, throttle));
-        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(repository, _navigation, null!));
+        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(null!, _navigation, throttle, clipboard));
+        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(repository, null!, throttle, clipboard));
+        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(repository, _navigation, null!, clipboard));
+        Assert.Throws<ArgumentNullException>(() => new CreateProfileViewModel(repository, _navigation, throttle, null!));
     }
 
     [Fact]
@@ -390,9 +393,9 @@ public sealed class CreateProfileViewModelTests : IDisposable
     [Fact]
     public async Task Create_DefaultConstructor_UsesDefaultKdfParameters()
     {
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
         _navigation.ResetTo(profilesPage);
-        var create = new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle);
+        var create = new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
         _navigation.NavigateTo(create);
         create.DisplayName = "Alice";
 

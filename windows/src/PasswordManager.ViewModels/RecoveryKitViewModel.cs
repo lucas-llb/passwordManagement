@@ -20,6 +20,7 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
     private readonly ProfileRepository _repository;
     private readonly INavigationService _navigation;
     private readonly UnlockThrottle _throttle;
+    private readonly ClipboardGuard _clipboard;
     private bool _cleared;
 
     /// <summary>Takes ownership of <paramref name="kitText"/>: this page zeroes it when it is left.</summary>
@@ -28,18 +29,21 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
     /// <param name="repository">The profile store, for the list shown after the page.</param>
     /// <param name="navigation">The page stack.</param>
     /// <param name="throttle">The unlock delay, passed on to the profile list shown after the page.</param>
+    /// <param name="clipboard">The clipboard guard, passed on to the profile list shown after the page.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="kitText"/> does not have the length of a kit text.</exception>
     public RecoveryKitViewModel(
         char[] kitText,
         ProfileRepository repository,
         INavigationService navigation,
-        UnlockThrottle throttle)
+        UnlockThrottle throttle,
+        ClipboardGuard clipboard)
     {
         ArgumentNullException.ThrowIfNull(kitText);
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(throttle);
+        ArgumentNullException.ThrowIfNull(clipboard);
 
         if (kitText.Length != RecoveryKit.TextLength)
         {
@@ -50,6 +54,7 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
         _repository = repository;
         _navigation = navigation;
         _throttle = throttle;
+        _clipboard = clipboard;
     }
 
     /// <summary>The kit text to show; empty once the page has been left.</summary>
@@ -79,6 +84,6 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
             return;
         }
 
-        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle));
+        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle, _clipboard));
     }
 }

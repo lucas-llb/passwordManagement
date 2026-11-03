@@ -11,12 +11,17 @@ using Microsoft.Windows.ApplicationModel.Resources;
 using PasswordManager.App.Views;
 using PasswordManager.ViewModels;
 using PasswordManager.ViewModels.Navigation;
+using DataTransferClipboard = Windows.ApplicationModel.DataTransfer.Clipboard;
 
 namespace PasswordManager.App;
 
 public sealed partial class MainWindow : Window
 {
     private static readonly TimeSpan IdleCheckInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan ClipboardCheckInterval = TimeSpan.FromSeconds(1);
+
+    // The marker WindowsClipboard puts on every guarded copy; nothing else in the app sets it.
+    private const string GuardedCopyFormat = "ExcludeClipboardContentFromMonitorProcessing";
 
     // The window procedure is a static native callback, so it reaches the one window through these. The previous
     // procedure is kept after close, so a message already in flight still chains to it.
@@ -25,9 +30,11 @@ public sealed partial class MainWindow : Window
 
     private readonly INavigationService _navigation;
     private readonly AutoLock _autoLock;
+    private readonly ClipboardGuard _clipboard;
     private readonly nint _hwnd;
     private readonly DispatcherQueue _dispatcher;
     private readonly DispatcherQueueTimer _idleTimer;
+    private readonly DispatcherQueueTimer _clipboardTimer;
 
     // Created once, so the window procedure only enqueues and never allocates.
     private readonly DispatcherQueueHandler _sessionLockedHandler;
@@ -36,10 +43,11 @@ public sealed partial class MainWindow : Window
     private readonly PointerEventHandler _pointerActivityHandler;
     private bool _unprotectPending;
 
-    public MainWindow(INavigationService navigation, AutoLock autoLock)
+    public MainWindow(INavigationService navigation, AutoLock autoLock, ClipboardGuard clipboard)
     {
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(autoLock);
+        ArgumentNullException.ThrowIfNull(clipboard);
 
         InitializeComponent();
         Title = new ResourceLoader().GetString("AppTitle");
@@ -50,6 +58,7 @@ public sealed partial class MainWindow : Window
 
         _navigation = navigation;
         _autoLock = autoLock;
+        _clipboard = clipboard;
         _dispatcher = DispatcherQueue;
         _sessionLockedHandler = _autoLock.OnSessionLocked;
         _minimizedHandler = _autoLock.OnMinimized;
@@ -71,6 +80,14 @@ public sealed partial class MainWindow : Window
         _autoLock.PropertyChanged += OnAutoLockChanged;
         UpdateIdleTimer();
 
+        // The copied password is cleared by the guard, which this timer asks once a second, and only while a copy waits (W-22).
+        _clipboardTimer = _dispatcher.CreateTimer();
+        _clipboardTimer.Interval = ClipboardCheckInterval;
+        _clipboardTimer.IsRepeating = true;
+        _clipboardTimer.Tick += OnClipboardTick;
+        _clipboard.PropertyChanged += OnClipboardChanged;
+        UpdateClipboardTimer();
+
         InstallWindowProc();
 
         _navigation.Navigated += OnNavigated;
@@ -79,11 +96,17 @@ public sealed partial class MainWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        ClearPendingCopy();
         UninstallWindowProc();
 
         _idleTimer.Stop();
         _idleTimer.Tick -= OnIdleTick;
         _autoLock.PropertyChanged -= OnAutoLockChanged;
+
+        _clipboardTimer.Stop();
+        _clipboardTimer.Tick -= OnClipboardTick;
+        _clipboard.PropertyChanged -= OnClipboardChanged;
+
         RootFrame.RemoveHandler(UIElement.KeyDownEvent, _keyActivityHandler);
         RootFrame.RemoveHandler(UIElement.PointerPressedEvent, _pointerActivityHandler);
         RootFrame.RemoveHandler(UIElement.PointerMovedEvent, _pointerActivityHandler);
@@ -196,6 +219,60 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // The guard resolves a copy on its own (clears it, or finds it gone), so the tick only has to ask. It never throws
+    // because the clipboard is busy; anything else is a bug and is left to crash.
+    private async void OnClipboardTick(DispatcherQueueTimer sender, object args) => await _clipboard.CheckAsync();
+
+    private void OnClipboardChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ClipboardGuard.PendingCopy))
+        {
+            UpdateClipboardTimer();
+        }
+    }
+
+    // On close, a copy still waiting would outlive the app: the unflushed content leaves with it, but a format another
+    // program has already pasted (rendered) stays on the clipboard. So it is cleared here, synchronously, and only if
+    // the clipboard still holds it: the content is still this process's, and carries the marker only the guard sets
+    // (a plain Ctrl+C in another field of the app has none). A busy clipboard is left as it is; nothing else is caught.
+    private void ClearPendingCopy()
+    {
+        if (_clipboard.PendingCopy == 0)
+        {
+            return;
+        }
+
+        var owner = GetClipboardOwner();
+        if (owner == nint.Zero || GetWindowThreadProcessId(owner, out var ownerProcess) == 0
+            || ownerProcess != (uint)Environment.ProcessId)
+        {
+            return;
+        }
+
+        try
+        {
+            if (DataTransferClipboard.GetContent().Contains(GuardedCopyFormat))
+            {
+                DataTransferClipboard.Clear();
+            }
+        }
+        catch (COMException)
+        {
+        }
+    }
+
+    private void UpdateClipboardTimer()
+    {
+        if (_clipboard.PendingCopy != 0)
+        {
+            _clipboardTimer.Start();
+        }
+        else
+        {
+            _clipboardTimer.Stop();
+        }
+    }
+
     // Session lock and minimize arrive as messages to the top-level window, which WinUI does not surface (W-18). A
     // window procedure is chained in front of WinUI's, with user32 only, so there is no dependency on comctl32 v6 as
     // SetWindowSubclass would have. Both steps fail closed: the app does not start without them.
@@ -256,4 +333,14 @@ public sealed partial class MainWindow : Window
         wtsEvent is NativeMethods.WTS_SESSION_LOCK
             or NativeMethods.WTS_CONSOLE_DISCONNECT
             or NativeMethods.WTS_REMOTE_DISCONNECT;
+
+    // The clipboard checks of ClearPendingCopy, which runs on close. They live here rather than in NativeMethods because
+    // only this window needs them.
+    [LibraryImport("user32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static partial nint GetClipboardOwner();
+
+    [LibraryImport("user32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static partial uint GetWindowThreadProcessId(nint hWnd, out uint processId);
 }

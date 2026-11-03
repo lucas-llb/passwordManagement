@@ -52,7 +52,36 @@ public sealed partial class EntryDetailPage : Page
     // The dates and the delete button belong to a saved entry only.
     public static Visibility ShowWhenSaved(bool isNew) => isNew ? Visibility.Collapsed : Visibility.Visible;
 
+    // The confirmation never shows next to the error. After a refused copy the earlier copy may still be on the
+    // clipboard, so the view model says both; what the person needs to see then is the error.
+    public static Visibility ShowWhenCopied(bool isCopied, bool copyFailed) =>
+        isCopied && !copyFailed ? Visibility.Visible : Visibility.Collapsed;
+
     private void OnLoaded(object sender, RoutedEventArgs e) => DetailTitle.Focus(FocusState.Programmatic);
+
+    // Ctrl+C (and Copy in the context menu) on the shown password goes through the clipboard guard instead of the plain
+    // clipboard, so it is marked private and cleared after 30 s like the button. Cut is the same copy and never deletes.
+    private void OnPasswordCopying(TextBox sender, TextControlCopyingToClipboardEventArgs e)
+    {
+        e.Handled = true;
+        CopySelection(sender);
+    }
+
+    private void OnPasswordCutting(TextBox sender, TextControlCuttingToClipboardEventArgs e)
+    {
+        e.Handled = true;
+        CopySelection(sender);
+    }
+
+    // An empty selection copies nothing, as on a plain text box.
+    private void CopySelection(TextBox box)
+    {
+        var selection = box.SelectedText;
+        if (ViewModel.CopyPasswordCommand.CanExecute(selection))
+        {
+            ViewModel.CopyPasswordCommand.Execute(selection);
+        }
+    }
 
     private async void OnDeleteClick(object sender, RoutedEventArgs e)
     {

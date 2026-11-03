@@ -21,6 +21,8 @@ internal sealed class TestProfiles : IDisposable
         Repository = new ProfileRepository(_directory.FullName);
         Time = new ManualTimeProvider();
         Throttle = new UnlockThrottle(Time);
+        ClipboardHost = new FakeClipboard();
+        Clipboard = new ClipboardGuard(ClipboardHost, Time, ClipboardGuard.DefaultClearAfter);
     }
 
     public ProfileRepository Repository { get; }
@@ -30,6 +32,12 @@ internal sealed class TestProfiles : IDisposable
 
     /// <summary>The unlock delay that every ViewModel of a test shares, like the one the app creates.</summary>
     public UnlockThrottle Throttle { get; }
+
+    /// <summary>The in-memory clipboard behind <see cref="Clipboard"/>.</summary>
+    public FakeClipboard ClipboardHost { get; }
+
+    /// <summary>The clipboard guard that every ViewModel of a test shares, on the clock of <see cref="Time"/>.</summary>
+    public ClipboardGuard Clipboard { get; }
 
     public string DirectoryPath => _directory.FullName;
 

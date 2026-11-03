@@ -26,6 +26,7 @@ public sealed partial class EntryListViewModel : PageViewModel
         ProfileRepository repository,
         INavigationService navigation,
         UnlockThrottle throttle,
+        ClipboardGuard clipboard,
         TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -33,12 +34,14 @@ public sealed partial class EntryListViewModel : PageViewModel
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(throttle);
+        ArgumentNullException.ThrowIfNull(clipboard);
 
         _profile = profile;
         _session = session;
         _repository = repository;
         _navigation = navigation;
         _throttle = throttle;
+        Clipboard = clipboard;
         _clock = clock ?? TimeProvider.System;
         Entries = session.Content.Entries;
         _index = BuildIndex(Entries);
@@ -46,6 +49,12 @@ public sealed partial class EntryListViewModel : PageViewModel
         FilteredEntries = AsList(Entries);
         SearchText = string.Empty;
     }
+
+    /// <summary>
+    /// The guard that every copy of a secret goes through; the detail pages read it from here. Locking the vault makes
+    /// it clear a pending copy at once.
+    /// </summary>
+    internal ClipboardGuard Clipboard { get; }
 
     /// <summary>The entries in content order; empty once the vault is locked.</summary>
     [ObservableProperty]
@@ -194,6 +203,8 @@ public sealed partial class EntryListViewModel : PageViewModel
     [RelayCommand]
     private void Lock()
     {
+        // First, so the secret leaves the clipboard on the next tick even if something below throws.
+        Clipboard.ExpireNow();
         _session.Dispose();
         LastOpened = null;
         _index = [];
@@ -203,8 +214,8 @@ public sealed partial class EntryListViewModel : PageViewModel
         FavoritesOnly = false;
         SelectedFolder = null;
         FilteredEntries = Array.Empty<VaultEntry>();
-        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle));
-        _navigation.NavigateTo(new UnlockViewModel(_profile, _repository, _navigation, _throttle));
+        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle, Clipboard));
+        _navigation.NavigateTo(new UnlockViewModel(_profile, _repository, _navigation, _throttle, Clipboard));
     }
 
     partial void OnSearchTextChanged(string value)

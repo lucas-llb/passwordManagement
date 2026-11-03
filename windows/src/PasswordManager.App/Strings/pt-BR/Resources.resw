@@ -111,6 +111,15 @@
   <data name="DetailShowPassword.Content" xml:space="preserve">
     <value>Mostrar senha</value>
   </data>
+  <data name="DetailCopyPassword.Content" xml:space="preserve">
+    <value>Copiar senha</value>
+  </data>
+  <data name="DetailPasswordCopied.Text" xml:space="preserve">
+    <value>Senha copiada. Ela sai da área de transferência em 30 segundos.</value>
+  </data>
+  <data name="DetailCopyFailed.Text" xml:space="preserve">
+    <value>Não foi possível copiar a senha. Tente de novo.</value>
+  </data>
   <data name="DetailGenerate.Content" xml:space="preserve">
     <value>Gerar senha</value>
   </data>

@@ -44,6 +44,7 @@ public sealed class EntryEditTests : IDisposable
             _profiles.Repository,
             _navigation,
             _profiles.Throttle,
+            _profiles.Clipboard,
             _profiles.Time);
         _navigation.ResetTo(list);
 
