@@ -54,6 +54,18 @@ public sealed class ScreenCaptureTests : IDisposable
     }
 
     [Fact]
+    public void AllowsScreenCapture_CsvExport_IsFalse()
+    {
+        var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
+        using var session = _profiles.OpenSession(profile);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+
+        var csv = new CsvExportViewModel(list, _navigation);
+
+        Assert.False(csv.AllowsScreenCapture);
+    }
+
+    [Fact]
     public void AllowsScreenCapture_CreateProfile_IsFalse()
     {
         var create = new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);

@@ -1,6 +1,9 @@
 namespace PasswordManager.ViewModels;
 
-/// <summary>How the last attempt of <see cref="ExportViewModel.ExportCommand"/> ended. The view maps each value to its own text.</summary>
+/// <summary>
+/// How the last attempt of <see cref="ExportViewModel.ExportCommand"/> or <see cref="CsvExportViewModel.ExportCommand"/>
+/// ended. The view maps each value to its own text.
+/// </summary>
 public enum ExportOutcome
 {
     /// <summary>Nothing to show: no attempt yet, the attempt was refused by the password rule, canceled, or the vault locked.</summary>
@@ -14,4 +17,7 @@ public enum ExportOutcome
 
     /// <summary>The chosen file is in the app's own vaults folder, so it was refused to keep a vault or the profile list from being overwritten.</summary>
     VaultsFolder,
+
+    /// <summary>The master password typed on the CSV page was wrong: the picker was never opened and nothing was written. Only <see cref="CsvExportViewModel"/> sets it.</summary>
+    WrongPassword,
 }

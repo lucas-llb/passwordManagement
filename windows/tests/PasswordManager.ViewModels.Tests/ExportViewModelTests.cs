@@ -484,6 +484,36 @@ public sealed class ExportViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task OpenCsvExport_WhileExportRuns_IsBlocked()
+    {
+        var (_, list, export) = OpenExport();
+        var picker = new FakeExportFilePicker(null);
+        picker.Block();
+        Assert.True(export.OpenCsvExportCommand.CanExecute(null));
+
+        var running = export.ExportCommand.ExecuteAsync(Request(ExportPassword, picker));
+
+        Assert.True(export.ExportCommand.IsRunning);
+        Assert.False(export.OpenCsvExportCommand.CanExecute(null));
+        export.OpenCsvExportCommand.Execute(null);
+        Assert.Same(export, _navigation.Current);
+
+        picker.Release();
+        await running;
+
+        Assert.True(export.OpenCsvExportCommand.CanExecute(null));
+        export.OpenCsvExportCommand.Execute(null);
+        var csv = Assert.IsType<CsvExportViewModel>(_navigation.Current);
+        Assert.False(csv.Acknowledged);
+
+        // The stack is [List, Export, CSV]: Back returns to the export page first, then to the list.
+        csv.GoBackCommand.Execute(null);
+        Assert.Same(export, _navigation.Current);
+        export.GoBackCommand.Execute(null);
+        Assert.Same(list, _navigation.Current);
+    }
+
+    [Fact]
     public async Task OnNavigatedFrom_ClearsOutcomeAndErrors()
     {
         var (_, list, export) = OpenExport();

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="PasswordManager.App.Views.CsvExportPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:PasswordManager.App.Views"
+    Loaded="OnLoaded"
+    Unloaded="OnUnloaded">
+
+    <!--  Plaintext export: the warning, the acknowledgement and the master password come before the save dialog.  -->
+    <ScrollViewer>
+        <Grid Padding="24">
+            <StackPanel
+                MaxWidth="480"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="16">
+                <TextBlock
+                    AutomationProperties.AutomationId="CsvExportTitle"
+                    x:Uid="CsvExportTitle"
+                    Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="CsvExportWarning"
+                    x:Uid="CsvExportWarning"
+                    FontWeight="SemiBold"
+                    TextWrapping="Wrap" />
+
+                <CheckBox
+                    x:Name="AcknowledgeCheck"
+                    AutomationProperties.AutomationId="CsvExportAcknowledge"
+                    x:Uid="CsvExportAcknowledge"
+                    Checked="OnAcknowledgeChanged"
+                    Unchecked="OnAcknowledgeChanged" />
+                <PasswordBox
+                    x:Name="PasswordInput"
+                    AutomationProperties.AutomationId="CsvExportPassword"
+                    x:Uid="CsvExportPassword"
+                    KeyDown="OnPasswordKeyDown" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="CsvExportWrongPassword"
+                    x:Uid="CsvExportWrongPassword"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CsvExportPage.IsWrongPassword(ViewModel.Outcome), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="CsvExportRetryCountdown"
+                    Text="{x:Bind local:CsvExportPage.RetryText(ViewModel.RetrySeconds), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CsvExportPage.IsCountingDown(ViewModel.RetrySeconds), Mode=OneWay}" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="CsvExportDone"
+                    Text="{x:Bind local:CsvExportPage.DoneText(ViewModel.SavedFileName), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CsvExportPage.IsSaved(ViewModel.Outcome), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="CsvExportFailed"
+                    x:Uid="CsvExportFailed"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CsvExportPage.IsFailed(ViewModel.Outcome), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="CsvExportVaultsFolder"
+                    x:Uid="CsvExportVaultsFolder"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:CsvExportPage.IsVaultsFolder(ViewModel.Outcome), Mode=OneWay}" />
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button
+                        AutomationProperties.AutomationId="CsvExportSave"
+                        x:Uid="CsvExportSave"
+                        Click="OnSaveClick"
+                        IsEnabled="{x:Bind local:CsvExportPage.CanSubmit(ViewModel.Acknowledged, ViewModel.ExportCommand.IsRunning, ViewModel.RetrySeconds), Mode=OneWay}"
+                        Style="{StaticResource AccentButtonStyle}" />
+                    <Button
+                        AutomationProperties.AutomationId="CsvExportBack"
+                        x:Uid="NavBack"
+                        Command="{x:Bind ViewModel.GoBackCommand}"
+                        KeyboardAcceleratorPlacementMode="Hidden">
+                        <Button.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="Escape" />
+                        </Button.KeyboardAccelerators>
+                    </Button>
+                    <ProgressRing
+                        Width="24"
+                        Height="24"
+                        AutomationProperties.AutomationId="CsvExportProgress"
+                        x:Uid="CsvExportProgress"
+                        IsActive="{x:Bind ViewModel.ExportCommand.IsRunning, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.ExportCommand.IsRunning, Mode=OneWay}" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>
