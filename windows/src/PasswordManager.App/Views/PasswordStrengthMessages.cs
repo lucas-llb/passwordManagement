@@ -4,8 +4,8 @@ using PasswordManager.Core.Passwords;
 
 namespace PasswordManager.App.Views;
 
-// The text of the advisory strength meter on the create page. Each key stays inline in its GetString call, so the
-// localization guard can match it against the resw.
+// The text of the advisory strength meter on the create page and on the new password of the settings page. Each key
+// stays inline in its GetString call, so the localization guard can match it against the resw.
 internal static class PasswordStrengthMessages
 {
     public static string Text(PasswordStrengthLevel level) => level switch

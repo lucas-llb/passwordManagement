@@ -75,6 +75,9 @@
   <data name="EntriesImport.Content" xml:space="preserve">
     <value>Importar</value>
   </data>
+  <data name="EntriesSettings.Content" xml:space="preserve">
+    <value>Configurações</value>
+  </data>
   <data name="EntriesSearch.Header" xml:space="preserve">
     <value>Buscar</value>
   </data>
@@ -470,5 +473,116 @@
   </data>
   <data name="KitDone.Content" xml:space="preserve">
     <value>Concluir</value>
+  </data>
+  <data name="SettingsTitle.Text" xml:space="preserve">
+    <value>Configurações</value>
+  </data>
+  <data name="SettingsLockHeading.Text" xml:space="preserve">
+    <value>Bloqueio automático</value>
+  </data>
+  <data name="SettingsIdleTimeout.Header" xml:space="preserve">
+    <value>Bloquear depois de ficar sem uso por</value>
+  </data>
+  <data name="SettingsIdleOption" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="SettingsLockOnMinimize.Content" xml:space="preserve">
+    <value>Bloquear ao minimizar a janela</value>
+  </data>
+  <data name="SettingsScopeNote.Text" xml:space="preserve">
+    <value>Estas opções valem para todos os perfis deste computador.</value>
+  </data>
+  <data name="SettingsSaveFailed.Text" xml:space="preserve">
+    <value>Não foi possível gravar esta preferência. Ela vale até você fechar o app.</value>
+  </data>
+  <data name="SettingsPasswordHeading.Text" xml:space="preserve">
+    <value>Trocar a senha mestra</value>
+  </data>
+  <data name="SettingsPasswordNote.Text" xml:space="preserve">
+    <value>Cópias antigas deste cofre continuam abrindo com a senha que valia quando foram feitas.</value>
+  </data>
+  <data name="SettingsCurrentPassword.Header" xml:space="preserve">
+    <value>Senha mestra atual</value>
+  </data>
+  <data name="SettingsNewPassword.Header" xml:space="preserve">
+    <value>Nova senha mestra (mínimo de 12 caracteres)</value>
+  </data>
+  <data name="SettingsConfirmPassword.Header" xml:space="preserve">
+    <value>Repita a nova senha mestra</value>
+  </data>
+  <data name="SettingsPasswordTooShort.Text" xml:space="preserve">
+    <value>A nova senha mestra precisa ter pelo menos 12 caracteres.</value>
+  </data>
+  <data name="SettingsPasswordMismatch.Text" xml:space="preserve">
+    <value>As duas senhas não são iguais.</value>
+  </data>
+  <data name="SettingsPasswordWrong.Text" xml:space="preserve">
+    <value>Senha mestra incorreta.</value>
+  </data>
+  <data name="SettingsPasswordFailed.Text" xml:space="preserve">
+    <value>Não foi possível trocar a senha. A senha mestra não mudou.</value>
+  </data>
+  <data name="SettingsPasswordChanged.Text" xml:space="preserve">
+    <value>Senha mestra trocada. O Kit de Recuperação continua valendo.</value>
+  </data>
+  <data name="SettingsChangePassword.Content" xml:space="preserve">
+    <value>Trocar senha</value>
+  </data>
+  <data name="SettingsKitHeading.Text" xml:space="preserve">
+    <value>Kit de Recuperação</value>
+  </data>
+  <data name="SettingsKitNote.Text" xml:space="preserve">
+    <value>O kit atual só deixa de valer depois que você anotar o novo. Cópias antigas deste cofre continuam abrindo com o kit antigo.</value>
+  </data>
+  <data name="SettingsKitPassword.Header" xml:space="preserve">
+    <value>Senha mestra</value>
+  </data>
+  <data name="SettingsKitWrong.Text" xml:space="preserve">
+    <value>Senha mestra incorreta.</value>
+  </data>
+  <data name="SettingsKitFailed.Text" xml:space="preserve">
+    <value>Não foi possível gerar o kit. O kit atual continua valendo.</value>
+  </data>
+  <data name="SettingsKitReplaced.Text" xml:space="preserve">
+    <value>Novo kit ativo. O kit anterior não abre mais este cofre.</value>
+  </data>
+  <data name="SettingsKitGenerate.Content" xml:space="preserve">
+    <value>Gerar novo kit</value>
+  </data>
+  <data name="SettingsDataHeading.Text" xml:space="preserve">
+    <value>Exportar e importar</value>
+  </data>
+  <data name="SettingsExport.Content" xml:space="preserve">
+    <value>Exportar senhas</value>
+  </data>
+  <data name="SettingsImport.Content" xml:space="preserve">
+    <value>Importar senhas</value>
+  </data>
+  <data name="SettingsProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Processando</value>
+  </data>
+  <data name="NewKitTitle.Text" xml:space="preserve">
+    <value>Novo Kit de Recuperação</value>
+  </data>
+  <data name="NewKitExplanation.Text" xml:space="preserve">
+    <value>O kit atual continua valendo até você concluir. Depois disso, só este kit vale para este perfil.</value>
+  </data>
+  <data name="NewKitInstructions.Text" xml:space="preserve">
+    <value>Anote o kit em papel e guarde-o em um lugar seguro, longe do computador. Ele não será mostrado de novo.</value>
+  </data>
+  <data name="NewKitSavedCheck.Content" xml:space="preserve">
+    <value>Anotei o novo Kit de Recuperação.</value>
+  </data>
+  <data name="NewKitDone.Content" xml:space="preserve">
+    <value>Concluir</value>
+  </data>
+  <data name="NewKitCancel.Content" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="NewKitFailed.Text" xml:space="preserve">
+    <value>Não foi possível gravar. O kit atual continua valendo; tente de novo.</value>
+  </data>
+  <data name="NewKitProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Gravando o novo kit</value>
   </data>
 </root>

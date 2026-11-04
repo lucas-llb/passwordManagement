@@ -27,6 +27,7 @@ public sealed partial class EntryListViewModel : PageViewModel
         INavigationService navigation,
         UnlockThrottle throttle,
         ClipboardGuard clipboard,
+        AppSettings settings,
         TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -35,6 +36,7 @@ public sealed partial class EntryListViewModel : PageViewModel
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(throttle);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(settings);
 
         _profile = profile;
         _session = session;
@@ -42,6 +44,7 @@ public sealed partial class EntryListViewModel : PageViewModel
         _navigation = navigation;
         _throttle = throttle;
         Clipboard = clipboard;
+        Settings = settings;
         _clock = clock ?? TimeProvider.System;
         Entries = session.Content.Entries;
         _index = BuildIndex(Entries);
@@ -55,6 +58,10 @@ public sealed partial class EntryListViewModel : PageViewModel
     /// it clear a pending copy at once.
     /// </summary>
     internal ClipboardGuard Clipboard { get; }
+
+    /// <summary>The app preferences; the settings page reads and changes them from here, and the profile list and the
+    /// unlock page shown after a lock get them again.</summary>
+    internal AppSettings Settings { get; }
 
     /// <summary>The entries in content order; empty once the vault is locked.</summary>
     [ObservableProperty]
@@ -125,6 +132,10 @@ public sealed partial class EntryListViewModel : PageViewModel
     [RelayCommand]
     private void OpenImport() => _navigation.NavigateTo(new ImportViewModel(this, _navigation, _clock));
 
+    /// <summary>Opens the settings page, above this list; Back returns here.</summary>
+    [RelayCommand]
+    private void OpenSettings() => _navigation.NavigateTo(new SettingsViewModel(this, _navigation));
+
     /// <summary>The full path of the app's vaults folder, which the export page refuses as a destination.</summary>
     internal string VaultsDirectory => _repository.VaultsDirectory;
 
@@ -166,6 +177,39 @@ public sealed partial class EntryListViewModel : PageViewModel
     /// <exception cref="InvalidOperationException">The vault is locked.</exception>
     /// <exception cref="ArgumentException"><paramref name="password"/> contains an invalid surrogate.</exception>
     internal void VerifyMasterPassword(ReadOnlySpan<char> password) => _session.VerifyPassword(password);
+
+    /// <summary>
+    /// Replaces the master password of the open vault and writes the file; the vault stays open. It runs Argon2id twice,
+    /// so callers run it off the UI thread; a lock waits for it.
+    /// </summary>
+    /// <param name="currentPassword">The current master password. Not modified; the caller zeroes it.</param>
+    /// <param name="newPassword">The new master password. Not modified; the caller zeroes it.</param>
+    /// <exception cref="VaultAuthenticationException"><paramref name="currentPassword"/> is wrong; nothing is written.</exception>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked.</exception>
+    /// <exception cref="ArgumentException">A password contains an invalid surrogate.</exception>
+    /// <exception cref="IOException">The write failed; the file and the session are unchanged.</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was denied; the file and the session are unchanged.</exception>
+    internal void ChangeMasterPassword(ReadOnlySpan<char> currentPassword, ReadOnlySpan<char> newPassword) =>
+        _session.ChangePassword(currentPassword, newPassword);
+
+    /// <summary>
+    /// Generates a new Recovery Kit and builds the file that holds it. Nothing is written, so the current kit keeps
+    /// working until <see cref="CommitRecoveryKit"/>. It runs Argon2id, so callers run it off the UI thread.
+    /// </summary>
+    /// <param name="kitText">Receives the kit text, exactly <see cref="RecoveryKit.TextLength"/> chars; the caller zeroes it.</param>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked.</exception>
+    /// <exception cref="ArgumentException"><paramref name="kitText"/> has the wrong length.</exception>
+    internal RecoveryKitReplacement PrepareRecoveryKit(Span<char> kitText) => _session.PrepareRecoveryKit(kitText);
+
+    /// <summary>Writes the file built by <see cref="PrepareRecoveryKit"/>, so the previous kit stops opening it.</summary>
+    /// <param name="replacement">The result of <see cref="PrepareRecoveryKit"/>.</param>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked, or the file changed since it was prepared; nothing is written.</exception>
+    /// <exception cref="IOException">The write failed; the file and the session are unchanged.</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was denied; the file and the session are unchanged.</exception>
+    internal void CommitRecoveryKit(RecoveryKitReplacement replacement) => _session.CommitRecoveryKit(replacement);
 
     /// <summary>
     /// Serializes the entries of the open vault as the bytes of a plaintext CSV. Nothing is written; the caller zeroes
@@ -312,8 +356,8 @@ public sealed partial class EntryListViewModel : PageViewModel
         FavoritesOnly = false;
         SelectedFolder = null;
         FilteredEntries = Array.Empty<VaultEntry>();
-        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle, Clipboard));
-        _navigation.NavigateTo(new UnlockViewModel(_profile, _repository, _navigation, _throttle, Clipboard));
+        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle, Clipboard, Settings));
+        _navigation.NavigateTo(new UnlockViewModel(_profile, _repository, _navigation, _throttle, Clipboard, Settings));
     }
 
     partial void OnSearchTextChanged(string value)

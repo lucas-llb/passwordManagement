@@ -27,7 +27,7 @@ public sealed class UnlockViewModelTests : IDisposable
 
     private (Profile Profile, ProfilesViewModel ProfilesPage, UnlockViewModel Unlock) OpenUnlockOf(Profile profile)
     {
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         _navigation.ResetTo(profilesPage);
         profilesPage.OpenProfileCommand.Execute(profile);
 
@@ -185,12 +185,14 @@ public sealed class UnlockViewModelTests : IDisposable
         var repository = _profiles.Repository;
         var throttle = _profiles.Throttle;
         var clipboard = _profiles.Clipboard;
+        var settings = _profiles.Settings;
 
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(null!, repository, _navigation, throttle, clipboard));
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, null!, _navigation, throttle, clipboard));
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, null!, throttle, clipboard));
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, _navigation, null!, clipboard));
-        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, _navigation, throttle, null!));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(null!, repository, _navigation, throttle, clipboard, settings));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, null!, _navigation, throttle, clipboard, settings));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, null!, throttle, clipboard, settings));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, _navigation, null!, clipboard, settings));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, _navigation, throttle, null!, settings));
+        Assert.Throws<ArgumentNullException>(() => new UnlockViewModel(profile, repository, _navigation, throttle, clipboard, null!));
     }
 
     [Fact]

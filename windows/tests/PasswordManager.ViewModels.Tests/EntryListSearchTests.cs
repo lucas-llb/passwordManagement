@@ -54,7 +54,7 @@ public sealed class EntryListSearchTests : IDisposable
     {
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, entries);
         var session = _profiles.OpenSession(profile);
-        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         _navigation.ResetTo(list);
 
         return list;
@@ -455,7 +455,7 @@ public sealed class EntryListSearchTests : IDisposable
         var session = _profiles.OpenSession(profile);
 
         var watch = Stopwatch.StartNew();
-        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         watch.Stop();
         _navigation.ResetTo(list);
         Assert.True(

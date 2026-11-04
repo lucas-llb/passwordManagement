@@ -12,9 +12,14 @@ namespace PasswordManager.Core.Storage;
 /// <para>There is no directory fsync, so a power cut right after <see cref="Write"/> returns may roll back to the
 /// previous version, never to a torn file. The <c>.bak</c> copy is not flushed and is best-effort.</para>
 /// <para>The temp name is fixed, so callers must serialize writes to one file. The directory must exist.</para>
+/// <para>The rename is retried for about 300 ms: on Windows, another process that opens a file just after it is written
+/// (an antivirus, for example) makes the rename fail for a few milliseconds. A file held for longer still fails.</para>
 /// </remarks>
 internal static class AtomicFile
 {
+    private const int RenameRetries = 5;
+    private const int FirstRetryDelayMilliseconds = 10;
+
     /// <summary>
     /// Replaces <paramref name="fullPath"/> with <paramref name="contents"/> atomically.
     /// </summary>
@@ -40,11 +45,29 @@ internal static class AtomicFile
                 File.Copy(fullPath, backupPath, overwrite: true);
             }
 
-            File.Move(tempPath, fullPath, overwrite: true);
+            RenameOver(tempPath, fullPath);
         }
         finally
         {
             DeleteQuietly(tempPath);
+        }
+    }
+
+    private static void RenameOver(string tempPath, string fullPath)
+    {
+        var delay = FirstRetryDelayMilliseconds;
+        for (var retriesLeft = RenameRetries; ; retriesLeft--)
+        {
+            try
+            {
+                File.Move(tempPath, fullPath, overwrite: true);
+                return;
+            }
+            catch (Exception e) when (retriesLeft > 0 && e is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(delay);
+                delay *= 2;
+            }
         }
     }
 

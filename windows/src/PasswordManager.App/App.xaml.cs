@@ -23,9 +23,12 @@ public partial class App : Application
         var navigation = new NavigationService();
         var repository = new ProfileRepository(ResolveVaultsDirectory());
         var throttle = new UnlockThrottle(TimeProvider.System);
+        var settings = new AppSettings(repository.VaultsDirectory);
 
-        // Before the window, so it sees every navigation; nothing is persisted yet (the settings screen comes later).
-        var autoLock = new AutoLock(navigation, TimeProvider.System, ResolveAutoLockOptions());
+        // Before the window, so it sees every navigation. The saved preferences set it; the Debug switches
+        // override them at startup only, and a change on the settings page replaces the options through settings.Changed.
+        var autoLock = new AutoLock(navigation, TimeProvider.System, ResolveAutoLockOptions(settings.AutoLockOptions));
+        settings.Changed += (_, _) => autoLock.ApplyOptions(settings.AutoLockOptions);
 
         // Before the window, which runs its timer, and shared with the pages, which copy through it (W-22).
         var clipboard = new ClipboardGuard(new WindowsClipboard(), TimeProvider.System, ResolveClipboardClearAfter());
@@ -33,7 +36,7 @@ public partial class App : Application
         _window = new MainWindow(navigation, autoLock, clipboard);
         _window.Activate();
 
-        navigation.ResetTo(new ProfilesViewModel(repository, navigation, throttle, clipboard));
+        navigation.ResetTo(new ProfilesViewModel(repository, navigation, throttle, clipboard, settings));
     }
 
     // Debug builds only: the E2E tests pass --vaults-dir <absolute folder> so they never touch the real vaults folder.
@@ -57,12 +60,13 @@ public partial class App : Application
     }
 
     // Debug builds only: the E2E tests pass --idle-timeout-seconds <n> (n > 0) and --lock-on-minimize so they do not
-    // wait 5 minutes. A bad value crashes the launch instead of falling back to the defaults.
-    private static AutoLockOptions ResolveAutoLockOptions()
+    // wait 5 minutes. They override the saved preferences at startup only: without a switch the saved value stands. A bad
+    // value crashes the launch instead of falling back to the saved preferences.
+    private static AutoLockOptions ResolveAutoLockOptions(AutoLockOptions saved)
     {
 #if DEBUG
         var arguments = Environment.GetCommandLineArgs();
-        var idleTimeout = AutoLockOptions.Default.IdleTimeout;
+        var idleTimeout = saved.IdleTimeout;
         var index = Array.IndexOf(arguments, "--idle-timeout-seconds");
         if (index >= 0)
         {
@@ -76,9 +80,9 @@ public partial class App : Application
             idleTimeout = TimeSpan.FromSeconds(seconds);
         }
 
-        return new AutoLockOptions(idleTimeout, Array.IndexOf(arguments, "--lock-on-minimize") >= 0);
+        return new AutoLockOptions(idleTimeout, saved.LockOnMinimize || Array.IndexOf(arguments, "--lock-on-minimize") >= 0);
 #else
-        return AutoLockOptions.Default;
+        return saved;
 #endif
     }
 

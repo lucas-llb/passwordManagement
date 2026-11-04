@@ -93,6 +93,7 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "EntriesNew");
         AssertNameFromResources(app, "EntriesExport");
         AssertNameFromResources(app, "EntriesImport");
+        AssertNameFromResources(app, "EntriesSettings");
         AssertNameFromResources(app, "EntriesLock");
         AssertNameFromResources(app, "EntriesList");
         AssertNameFromResources(app, "EntriesSearch");
@@ -576,6 +577,171 @@ public sealed class LocalizationE2ETests
     }
 
     [Fact]
+    public void SettingsPage_TextsComeFromResources()
+    {
+        const string newPassword = "Tz9#kQ4!vL2$wP8@xN7";
+        int[] idleMinutes = [1, 2, 5, 10, 15, 30, 60];
+        var optionTexts = idleMinutes.Select(minutes => AppResources.Format("SettingsIdleOption", minutes)).ToArray();
+
+        // The recovery-kit vector has the real Argon2id cost, so the ring is on screen for a moment while a password check or a
+        // new kit runs. settings.json exists, so a held copy can make its save fail.
+        using var app = AppSession.Launch(directory =>
+        {
+            SeededVault.SeedRecoveryKit(directory);
+            File.WriteAllText(
+                Path.Combine(directory, "settings.json"), """{"idleTimeoutMinutes":5,"lockOnMinimize":false}""", new UTF8Encoding(false));
+        });
+        Assert.Single(app.Items("ProfilesList")).Patterns.Invoke.Pattern.Invoke();
+        app.TypePassword(SeededVault.RecoveryKitPassword);
+        app.Invoke("UnlockButton");
+        app.WaitFor("EntriesList");
+        var vaultPath = SeededVault.VaultPath(app.VaultsDirectory);
+        var settingsPath = Path.Combine(app.VaultsDirectory, "settings.json");
+        app.Invoke("EntriesSettings");
+
+        // The page as it opens: every static text, the options (data of the drop-down, formatted from the resw) and the
+        // boxes empty, so the PasswordBox reveal buttons, named by WinUI, are not shown.
+        app.WaitFor("SettingsTitle");
+        app.WaitGone("EntriesList");
+        foreach (var uid in new[]
+        {
+            "SettingsTitle", "SettingsLockHeading", "SettingsIdleTimeout", "SettingsLockOnMinimize", "SettingsScopeNote",
+            "SettingsPasswordHeading", "SettingsPasswordNote", "SettingsCurrentPassword", "SettingsNewPassword",
+            "SettingsConfirmPassword", "SettingsChangePassword", "SettingsKitHeading", "SettingsKitNote", "SettingsKitPassword",
+            "SettingsKitGenerate", "SettingsDataHeading", "SettingsExport", "SettingsImport",
+        })
+        {
+            AssertNameFromResources(app, uid);
+        }
+
+        AssertNameFromResources(app, "SettingsBack", "NavBack");
+        Assert.Equal(optionTexts, app.OptionNames("SettingsIdleTimeout"));
+        AssertEveryTextFromResourcesOrData(app, optionTexts);
+
+        // The meter text; the box is not empty, so the sweep waits until the attempt below empties it.
+        app.SetValue("SettingsNewPassword", "aaaaaaaaaaaa");
+        app.WaitName("SettingsStrength", AppResources.Strings["PasswordStrengthVeryWeak"]);
+
+        // The two refusals of the new password.
+        SetPasswords(app, SeededVault.RecoveryKitPassword, "curta-ficti", "curta-ficti");
+        app.Invoke("SettingsChangePassword");
+        AssertNameFromResources(app, "SettingsPasswordTooShort");
+        app.WaitGone("SettingsStrength");
+        AssertEveryTextFromResourcesOrData(app, optionTexts);
+
+        SetPasswords(app, SeededVault.RecoveryKitPassword, "senha-ficticia-um-123", "senha-ficticia-dois-456");
+        app.Invoke("SettingsChangePassword");
+        AssertNameFromResources(app, "SettingsPasswordMismatch");
+        app.WaitGone("SettingsPasswordTooShort");
+        AssertEveryTextFromResourcesOrData(app, optionTexts);
+
+        // A wrong current password: the error and the countdown of the delay it starts, on both forms (the text of the unlock screen).
+        var countdown = AppResources.Format("UnlockRetryCountdown", 1);
+        SetPasswords(app, "senha-errada-ficticia", newPassword, newPassword);
+        app.Invoke("SettingsChangePassword");
+        AssertNameFromResources(app, "SettingsPasswordWrong");
+        app.WaitGone("SettingsPasswordMismatch");
+        app.WaitName("SettingsPasswordCountdown", countdown);
+        app.WaitName("SettingsKitCountdown", countdown);
+        AssertEveryTextFromResourcesOrData(app, [.. optionTexts, countdown]);
+        app.WaitGone("SettingsPasswordCountdown");
+        app.WaitEnabled("SettingsChangePassword");
+
+        // The vault cannot be written: the change fails and says so, and the password stays.
+        using (new FileStream(vaultPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            SetPasswords(app, SeededVault.RecoveryKitPassword, newPassword, newPassword);
+            app.Invoke("SettingsChangePassword");
+            AssertNameFromResources(app, "SettingsPasswordFailed");
+            app.WaitGone("SettingsPasswordWrong");
+            AssertEveryTextFromResourcesOrData(app, optionTexts);
+        }
+
+        // The change that works. The ring is shown while Argon2id runs off the UI thread; while it spins, WinUI puts its own
+        // busy state, in the system language, before the name, so the name must end with the resw value.
+        SetPasswords(app, SeededVault.RecoveryKitPassword, newPassword, newPassword);
+        app.Invoke("SettingsChangePassword");
+        Assert.True(
+            app.WaitAppears("SettingsProgress", TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(10)),
+            "The progress ring was never shown while the password change ran.");
+        Assert.EndsWith(" " + AppResources.ExpectedName("SettingsProgress"), app.WaitFor("SettingsProgress").Name, StringComparison.Ordinal);
+        AssertNameFromResources(app, "SettingsPasswordChanged");
+        app.WaitGone("SettingsPasswordFailed");
+        app.WaitGone("SettingsProgress");
+        AssertEveryTextFromResourcesOrData(app, optionTexts);
+
+        // A wrong master password for the kit.
+        app.SetValue("SettingsKitPassword", "senha-errada-ficticia");
+        app.Invoke("SettingsKitGenerate");
+        AssertNameFromResources(app, "SettingsKitWrong");
+        app.WaitGone("SettingsPasswordChanged");
+        app.WaitName("SettingsKitCountdown", countdown);
+        AssertEveryTextFromResourcesOrData(app, [.. optionTexts, countdown]);
+        app.WaitGone("SettingsKitCountdown");
+        app.WaitEnabled("SettingsKitGenerate");
+
+        // A preference that cannot be saved: the file is held, and the page says the value lasts until the app closes.
+        using (new FileStream(settingsPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            app.Toggle("SettingsLockOnMinimize");
+            AssertNameFromResources(app, "SettingsSaveFailed");
+            AssertEveryTextFromResourcesOrData(app, optionTexts);
+        }
+
+        // A new kit that is concluded: the message of the replaced kit, with the ring on while the check and the kit run.
+        app.SetValue("SettingsKitPassword", newPassword);
+        app.Invoke("SettingsKitGenerate");
+        Assert.True(
+            app.WaitAppears("SettingsProgress", TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(10)),
+            "The progress ring was never shown while the new kit was made.");
+        app.WaitFor("NewKitText");
+        app.WaitGone("SettingsTitle");
+        app.Toggle("NewKitSavedCheck");
+        app.WaitEnabled("NewKitDone");
+        app.Invoke("NewKitDone");
+        AssertNameFromResources(app, "SettingsKitReplaced");
+        app.WaitGone("NewKitTitle");
+        AssertEveryTextFromResourcesOrData(app, optionTexts);
+    }
+
+    [Fact]
+    public void NewRecoveryKitPage_TextsComeFromResources()
+    {
+        using var app = AppSession.Launch(SeededVault.SeedRecoveryKit);
+        Assert.Single(app.Items("ProfilesList")).Patterns.Invoke.Pattern.Invoke();
+        app.TypePassword(SeededVault.RecoveryKitPassword);
+        app.Invoke("UnlockButton");
+        app.WaitFor("EntriesList");
+        var vaultPath = SeededVault.VaultPath(app.VaultsDirectory);
+        app.Invoke("EntriesSettings");
+        app.WaitFor("SettingsTitle");
+        app.SetValue("SettingsKitPassword", SeededVault.RecoveryKitPassword);
+        app.Invoke("SettingsKitGenerate");
+
+        // The kit text is data the app generated; the sweep takes it as allowed.
+        var kitText = app.WaitFor("NewKitText").Name;
+        app.WaitGone("SettingsTitle");
+        Assert.Equal(RecoveryKit.TextLength, kitText.Length);
+        foreach (var uid in new[] { "NewKitTitle", "NewKitExplanation", "NewKitInstructions", "NewKitSavedCheck", "NewKitDone", "NewKitCancel" })
+        {
+            AssertNameFromResources(app, uid);
+        }
+
+        AssertEveryTextFromResourcesOrData(app, kitText);
+
+        // The vault cannot be written: the page says so, with the kit still shown.
+        app.Toggle("NewKitSavedCheck");
+        app.WaitEnabled("NewKitDone");
+        using (new FileStream(vaultPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            app.Invoke("NewKitDone");
+            AssertNameFromResources(app, "NewKitFailed");
+            app.WaitEnabled("NewKitDone");
+            AssertEveryTextFromResourcesOrData(app, kitText);
+        }
+    }
+
+    [Fact]
     public void EmptyVault_EntriesEmptyTextComesFromResources()
     {
         using var app = AppSession.Launch(SeededVault.SeedEmpty);
@@ -586,6 +752,14 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "EntriesEmpty");
         Assert.Empty(app.Items("EntriesList"));
         AssertEveryTextFromResourcesOrData(app);
+    }
+
+    // The three password boxes of the settings page, set through UI Automation (only fictitious passwords).
+    private static void SetPasswords(AppSession app, string current, string replacement, string confirmation)
+    {
+        app.SetValue("SettingsCurrentPassword", current);
+        app.SetValue("SettingsNewPassword", replacement);
+        app.SetValue("SettingsConfirmPassword", confirmation);
     }
 
     // Choose a file through the open dialog and expect the page to refuse it with this message, back at the first step.

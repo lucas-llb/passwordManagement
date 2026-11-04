@@ -24,6 +24,12 @@ internal static class SeededVault
     public static JsonElement[] ExportEntries =>
         [.. ReadManifest("export").GetProperty("content").GetProperty("entries").EnumerateArray()];
 
+    // Master password and Recovery Kit text of the recovery-kit test vector: a vault with a password slot and a kit slot, both at
+    // the default Argon2id cost (64 MiB/3/1). The W-26 tests that generate a new kit seed it. Its manifest is read on demand.
+    public static string RecoveryKitPassword => ReadManifest("recovery-kit").GetProperty("password").GetString()!;
+
+    public static string RecoveryKitText => ReadManifest("recovery-kit").GetProperty("recoveryKit").GetString()!;
+
     public static JsonElement[] Entries => [.. Manifest.GetProperty("content").GetProperty("entries").EnumerateArray()];
 
     // The 2,000-entry vault of the list performance test: built here through Core (no test vector, since spec/test-vectors
@@ -37,6 +43,8 @@ internal static class SeededVault
     public static void Seed(string directory) => SeedVector(directory, "entries-unicode");
 
     public static void SeedEmpty(string directory) => SeedVector(directory, "empty");
+
+    public static void SeedRecoveryKit(string directory) => SeedVector(directory, "recovery-kit");
 
     public static void SeedProfileOnly(string directory) => WriteProfileList(directory);
 
@@ -88,6 +96,28 @@ internal static class SeededVault
         using var session = new VaultSession(path);
         session.Unlock(password);
         return session.Content;
+    }
+
+    // Whether this Recovery Kit text unwraps the Vault Key of the vault file at this path, through Core as another program
+    // would: false when the kit is wrong or was replaced (the type-2 slot no longer opens with it). Reads the whole file, so the
+    // file must not be held by the test.
+    public static bool OpensWithKit(string path, string kitText)
+    {
+        var file = File.ReadAllBytes(path);
+        var vaultKey = new byte[VaultFormat.KeySize];
+        try
+        {
+            RecoveryKit.Unlock(file, kitText, vaultKey);
+            return true;
+        }
+        catch (VaultAuthenticationException)
+        {
+            return false;
+        }
+        finally
+        {
+            Array.Clear(vaultKey);
+        }
     }
 
     private static VaultEntry LargeEntry(int index) => new()

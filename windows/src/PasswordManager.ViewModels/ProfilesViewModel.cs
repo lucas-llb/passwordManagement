@@ -16,26 +16,31 @@ public sealed partial class ProfilesViewModel : PageViewModel
     private readonly INavigationService _navigation;
     private readonly UnlockThrottle _throttle;
     private readonly ClipboardGuard _clipboard;
+    private readonly AppSettings _settings;
 
     /// <param name="repository">The profile store.</param>
     /// <param name="navigation">The page stack.</param>
     /// <param name="throttle">The unlock delay, passed on to the unlock screens this page opens.</param>
     /// <param name="clipboard">The clipboard guard, passed on to the screens that follow this one.</param>
+    /// <param name="settings">The app preferences, passed on to the screens that follow this one.</param>
     public ProfilesViewModel(
         ProfileRepository repository,
         INavigationService navigation,
         UnlockThrottle throttle,
-        ClipboardGuard clipboard)
+        ClipboardGuard clipboard,
+        AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(throttle);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(settings);
 
         _repository = repository;
         _navigation = navigation;
         _throttle = throttle;
         _clipboard = clipboard;
+        _settings = settings;
         Profiles = [];
         RenameText = string.Empty;
     }
@@ -106,12 +111,13 @@ public sealed partial class ProfilesViewModel : PageViewModel
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        _navigation.NavigateTo(new UnlockViewModel(profile, _repository, _navigation, _throttle, _clipboard));
+        _navigation.NavigateTo(new UnlockViewModel(profile, _repository, _navigation, _throttle, _clipboard, _settings));
     }
 
     // Nothing to create into while the list cannot be read: Create and ValidateDisplayName would throw.
     [RelayCommand(CanExecute = nameof(CanCreateProfile))]
-    private void CreateProfile() => _navigation.NavigateTo(new CreateProfileViewModel(_repository, _navigation, _throttle, _clipboard));
+    private void CreateProfile() =>
+        _navigation.NavigateTo(new CreateProfileViewModel(_repository, _navigation, _throttle, _clipboard, _settings));
 
     private bool CanCreateProfile() => !LoadFailed;
 

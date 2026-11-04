@@ -157,6 +157,12 @@ public sealed partial class MainWindow : Window
             case RecoveryKitViewModel kit:
                 RootFrame.Navigate(typeof(RecoveryKitPage), kit);
                 break;
+            case SettingsViewModel settings:
+                RootFrame.Navigate(typeof(SettingsPage), settings);
+                break;
+            case NewRecoveryKitViewModel newKit:
+                RootFrame.Navigate(typeof(NewRecoveryKitPage), newKit);
+                break;
             default:
                 throw new InvalidOperationException("No page is registered for the current ViewModel.");
         }

@@ -17,18 +17,20 @@ public sealed class ProfilesViewModelTests : IDisposable
         var repository = _profiles.Repository;
         var throttle = _profiles.Throttle;
         var clipboard = _profiles.Clipboard;
+        var settings = _profiles.Settings;
 
-        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(null!, _navigation, throttle, clipboard));
-        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(repository, null!, throttle, clipboard));
-        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(repository, _navigation, null!, clipboard));
-        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(repository, _navigation, throttle, null!));
+        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(null!, _navigation, throttle, clipboard, settings));
+        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(repository, null!, throttle, clipboard, settings));
+        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(repository, _navigation, null!, clipboard, settings));
+        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(repository, _navigation, throttle, null!, settings));
+        Assert.Throws<ArgumentNullException>(() => new ProfilesViewModel(repository, _navigation, throttle, clipboard, null!));
     }
 
     [Fact]
     public void OnNavigatedTo_MissingFolder_IsEmptyWithoutFailure()
     {
         var repository = new ProfileRepository(Path.Combine(_profiles.DirectoryPath, "missing"));
-        var viewModel = new ProfilesViewModel(repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         _navigation.ResetTo(viewModel);
 
@@ -40,7 +42,7 @@ public sealed class ProfilesViewModelTests : IDisposable
     [Fact]
     public void OnNavigatedTo_ExistingFolderWithoutProfiles_IsEmptyWithoutFailure()
     {
-        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         _navigation.ResetTo(viewModel);
 
@@ -53,7 +55,7 @@ public sealed class ProfilesViewModelTests : IDisposable
     {
         var first = _profiles.CreateProfile("Alice", TestProfiles.Password);
         var second = _profiles.CreateProfile("Bob", TestProfiles.Password);
-        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         Assert.True(viewModel.IsEmpty);
 
         _navigation.ResetTo(viewModel);
@@ -68,7 +70,7 @@ public sealed class ProfilesViewModelTests : IDisposable
     {
         Directory.CreateDirectory(_profiles.DirectoryPath);
         File.WriteAllText(Path.Combine(_profiles.DirectoryPath, ProfileRepository.ProfilesFileName), "{ not json");
-        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         _navigation.ResetTo(viewModel);
 
@@ -82,7 +84,7 @@ public sealed class ProfilesViewModelTests : IDisposable
     {
         var path = Path.Combine(_profiles.DirectoryPath, ProfileRepository.ProfilesFileName);
         File.WriteAllText(path, "{ not json");
-        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         _navigation.ResetTo(viewModel);
         Assert.True(viewModel.LoadFailed);
 
@@ -99,7 +101,7 @@ public sealed class ProfilesViewModelTests : IDisposable
     {
         _profiles.CreateProfile("Alice", TestProfiles.Password);
         var bob = _profiles.CreateProfile("Bob", TestProfiles.Password);
-        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         _navigation.ResetTo(viewModel);
 
         viewModel.OpenProfileCommand.Execute(bob);
@@ -130,7 +132,7 @@ public sealed class ProfilesViewModelTests : IDisposable
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password);
         var bob = _profiles.CreateProfile("Bob", TestProfiles.Password);
-        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         _navigation.ResetTo(viewModel);
 
         return (viewModel, alice, bob);
@@ -154,7 +156,7 @@ public sealed class ProfilesViewModelTests : IDisposable
     public void CreateProfile_ListFailedToLoad_CannotExecuteUntilFixed()
     {
         File.WriteAllText(ProfilesFilePath, "{ not json");
-        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         var canExecuteChanged = 0;
         viewModel.CreateProfileCommand.CanExecuteChanged += (_, _) => canExecuteChanged++;
 
@@ -374,7 +376,7 @@ public sealed class ProfilesViewModelTests : IDisposable
     public void ConfirmDelete_LastProfile_LeavesAnEmptyList()
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password);
-        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var viewModel = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         _navigation.ResetTo(viewModel);
 
         viewModel.RequestDeleteCommand.Execute(alice);

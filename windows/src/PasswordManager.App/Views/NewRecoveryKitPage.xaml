@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="PasswordManager.App.Views.NewRecoveryKitPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Loaded="OnLoaded">
+
+    <!--
+        A new Recovery Kit, shown once above the settings page. Nothing is written until Concluir: Cancelar, Escape, a lock or
+        closing the app leave the current kit valid.
+    -->
+    <ScrollViewer>
+        <Grid Padding="24">
+            <StackPanel
+                MaxWidth="480"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="16">
+                <TextBlock
+                    AutomationProperties.AutomationId="NewKitTitle"
+                    x:Uid="NewKitTitle"
+                    Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="NewKitExplanation"
+                    x:Uid="NewKitExplanation"
+                    TextWrapping="Wrap" />
+
+                <!--  Set from the view model in OnNavigatedTo and emptied in OnNavigatedFrom; not selectable, so not copied.  -->
+                <TextBlock
+                    x:Name="KitTextBlock"
+                    AutomationProperties.AutomationId="NewKitText"
+                    FontFamily="Consolas"
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="NewKitInstructions"
+                    x:Uid="NewKitInstructions"
+                    TextWrapping="Wrap" />
+                <CheckBox
+                    x:Name="KitSavedCheck"
+                    AutomationProperties.AutomationId="NewKitSavedCheck"
+                    x:Uid="NewKitSavedCheck"
+                    Checked="OnKitSavedChanged"
+                    Unchecked="OnKitSavedChanged" />
+                <TextBlock
+                    AutomationProperties.AutomationId="NewKitFailed"
+                    x:Uid="NewKitFailed"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind ViewModel.SaveFailed, Mode=OneWay}" />
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button
+                        AutomationProperties.AutomationId="NewKitDone"
+                        x:Uid="NewKitDone"
+                        Command="{x:Bind ViewModel.DoneCommand}"
+                        Style="{StaticResource AccentButtonStyle}" />
+                    <Button
+                        AutomationProperties.AutomationId="NewKitCancel"
+                        x:Uid="NewKitCancel"
+                        Command="{x:Bind ViewModel.CancelCommand}"
+                        KeyboardAcceleratorPlacementMode="Hidden">
+                        <Button.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="Escape" />
+                        </Button.KeyboardAccelerators>
+                    </Button>
+                    <ProgressRing
+                        Width="24"
+                        Height="24"
+                        AutomationProperties.AutomationId="NewKitProgress"
+                        x:Uid="NewKitProgress"
+                        IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>

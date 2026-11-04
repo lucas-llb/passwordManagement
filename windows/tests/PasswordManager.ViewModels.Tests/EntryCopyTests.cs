@@ -43,6 +43,7 @@ public sealed class EntryCopyTests : IDisposable
             _navigation,
             _profiles.Throttle,
             _profiles.Clipboard,
+            _profiles.Settings,
             _profiles.Time);
         _navigation.ResetTo(list);
 

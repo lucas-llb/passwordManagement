@@ -23,6 +23,7 @@ internal sealed class TestProfiles : IDisposable
         Throttle = new UnlockThrottle(Time);
         ClipboardHost = new FakeClipboard();
         Clipboard = new ClipboardGuard(ClipboardHost, Time, ClipboardGuard.DefaultClearAfter);
+        Settings = new AppSettings(_directory.FullName);
     }
 
     public ProfileRepository Repository { get; }
@@ -38,6 +39,12 @@ internal sealed class TestProfiles : IDisposable
 
     /// <summary>The clipboard guard that every ViewModel of a test shares, on the clock of <see cref="Time"/>.</summary>
     public ClipboardGuard Clipboard { get; }
+
+    /// <summary>
+    /// The app preferences that every ViewModel of a test shares, over the throwaway folder: its
+    /// <c>settings.json</c> goes away with the folder.
+    /// </summary>
+    public AppSettings Settings { get; }
 
     public string DirectoryPath => _directory.FullName;
 

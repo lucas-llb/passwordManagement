@@ -42,6 +42,10 @@
                     x:Uid="EntriesImport"
                     Command="{x:Bind ViewModel.OpenImportCommand}" />
                 <Button
+                    AutomationProperties.AutomationId="EntriesSettings"
+                    x:Uid="EntriesSettings"
+                    Command="{x:Bind ViewModel.OpenSettingsCommand}" />
+                <Button
                     AutomationProperties.AutomationId="EntriesLock"
                     x:Uid="EntriesLock"
                     Command="{x:Bind ViewModel.LockCommand}" />

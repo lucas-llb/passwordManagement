@@ -72,6 +72,7 @@ public sealed class ImportViewModelTests : IDisposable
             _navigation,
             _profiles.Throttle,
             _profiles.Clipboard,
+            _profiles.Settings,
             _profiles.Time);
         _navigation.ResetTo(list);
         list.OpenImportCommand.Execute(null);
