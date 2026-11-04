@@ -72,6 +72,9 @@
   <data name="EntriesExport.Content" xml:space="preserve">
     <value>Exportar</value>
   </data>
+  <data name="EntriesImport.Content" xml:space="preserve">
+    <value>Importar</value>
+  </data>
   <data name="EntriesSearch.Header" xml:space="preserve">
     <value>Buscar</value>
   </data>
@@ -356,6 +359,102 @@
   </data>
   <data name="CsvExportSuggestedFileName" xml:space="preserve">
     <value>senhas-sem-criptografia</value>
+  </data>
+  <data name="ImportTitle.Text" xml:space="preserve">
+    <value>Importar senhas</value>
+  </data>
+  <data name="ImportIntro.Text" xml:space="preserve">
+    <value>Escolha um arquivo .pmvault ou um CSV do Bitwarden ou do KeePass. Nada é gravado antes de você confirmar na prévia.</value>
+  </data>
+  <data name="ImportChoose.Content" xml:space="preserve">
+    <value>Escolher arquivo</value>
+  </data>
+  <data name="ImportPassword.Header" xml:space="preserve">
+    <value>Senha do arquivo</value>
+  </data>
+  <data name="ImportOpen.Content" xml:space="preserve">
+    <value>Abrir arquivo</value>
+  </data>
+  <data name="ImportProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Importando</value>
+  </data>
+  <data name="ImportPolicy.Header" xml:space="preserve">
+    <value>Entradas duplicadas</value>
+  </data>
+  <data name="ImportPolicyHelp.Text" xml:space="preserve">
+    <value>Pular mantém o que já está no cofre. Duplicar adiciona outra entrada. Substituir atualiza a entrada existente, e um campo vazio no arquivo não apaga nada.</value>
+  </data>
+  <data name="ImportNothing.Text" xml:space="preserve">
+    <value>Nada a importar com essa escolha.</value>
+  </data>
+  <data name="ImportPreviewList.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Prévia da importação</value>
+  </data>
+  <data name="ImportRowDuplicate.Text" xml:space="preserve">
+    <value>Duplicada</value>
+  </data>
+  <data name="ImportConfirm.Content" xml:space="preserve">
+    <value>Confirmar importação</value>
+  </data>
+  <data name="ImportDoneCsvReminder.Text" xml:space="preserve">
+    <value>O CSV continua sem criptografia onde está. Apague o arquivo.</value>
+  </data>
+  <data name="ImportFileName" xml:space="preserve">
+    <value>Arquivo: {0}</value>
+  </data>
+  <data name="ImportSummary" xml:space="preserve">
+    <value>{0} novas e {1} duplicadas.</value>
+  </data>
+  <data name="ImportRejected" xml:space="preserve">
+    <value>{0} itens inválidos não serão importados. O primeiro está na linha ou posição {1} do arquivo.</value>
+  </data>
+  <data name="ImportIgnoredColumns" xml:space="preserve">
+    <value>Colunas que o app não guarda e ficarão de fora: {0}.</value>
+  </data>
+  <data name="ImportDone" xml:space="preserve">
+    <value>Importação concluída: {0} adicionadas, {1} substituídas, {2} puladas.</value>
+  </data>
+  <data name="ImportPolicySkip" xml:space="preserve">
+    <value>Pular</value>
+  </data>
+  <data name="ImportPolicyDuplicate" xml:space="preserve">
+    <value>Duplicar</value>
+  </data>
+  <data name="ImportPolicyReplace" xml:space="preserve">
+    <value>Substituir</value>
+  </data>
+  <data name="ImportRowDuplicateName" xml:space="preserve">
+    <value>{0}, duplicada</value>
+  </data>
+  <data name="ImportErrorReadFailed" xml:space="preserve">
+    <value>Não foi possível ler o arquivo.</value>
+  </data>
+  <data name="ImportErrorTooLarge" xml:space="preserve">
+    <value>O arquivo passa do limite de 32 MiB.</value>
+  </data>
+  <data name="ImportErrorTooManyEntries" xml:space="preserve">
+    <value>O arquivo passa do limite de 20.000 itens.</value>
+  </data>
+  <data name="ImportErrorUnsupportedFile" xml:space="preserve">
+    <value>Escolha um arquivo .pmvault ou .csv.</value>
+  </data>
+  <data name="ImportErrorInvalidVaultFile" xml:space="preserve">
+    <value>Este arquivo não é um cofre válido.</value>
+  </data>
+  <data name="ImportErrorWrongPassword" xml:space="preserve">
+    <value>Senha errada ou arquivo alterado.</value>
+  </data>
+  <data name="ImportErrorInvalidEncoding" xml:space="preserve">
+    <value>O CSV precisa estar em UTF-8.</value>
+  </data>
+  <data name="ImportErrorInvalidHeader" xml:space="preserve">
+    <value>O cabeçalho do CSV não é do Bitwarden, do KeePass nem deste app.</value>
+  </data>
+  <data name="ImportErrorMalformedCsv" xml:space="preserve">
+    <value>O CSV está malformado perto da linha {0}.</value>
+  </data>
+  <data name="ImportErrorSaveFailed" xml:space="preserve">
+    <value>Não foi possível gravar no cofre. Nada mudou; tente de novo.</value>
   </data>
   <data name="KitTitle.Text" xml:space="preserve">
     <value>Kit de Recuperação</value>

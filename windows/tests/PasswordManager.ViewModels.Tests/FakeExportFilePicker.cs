@@ -1,11 +1,11 @@
 namespace PasswordManager.ViewModels.Tests;
 
 /// <summary>
-/// An <see cref="IExportFilePicker"/> that answers with a fixed path, or null for a canceled dialog. A test can run a
-/// callback right before the answer (the person locking the vault while the dialog is open), hold the dialog open until
-/// <see cref="Release"/>, and count how often it was asked.
+/// An <see cref="IExportFilePicker"/> and <see cref="IImportFilePicker"/> that answers with a fixed path, or null for a
+/// canceled dialog. A test can run a callback right before the answer (the person locking the vault while the dialog is
+/// open), hold the dialog open until <see cref="Release"/>, and count how often it was asked.
 /// </summary>
-internal sealed class FakeExportFilePicker(string? path) : IExportFilePicker
+internal sealed class FakeExportFilePicker(string? path) : IExportFilePicker, IImportFilePicker
 {
     private TaskCompletionSource? _gate;
 

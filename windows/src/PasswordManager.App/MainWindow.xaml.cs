@@ -151,6 +151,9 @@ public sealed partial class MainWindow : Window
             case CsvExportViewModel csvExport:
                 RootFrame.Navigate(typeof(CsvExportPage), csvExport);
                 break;
+            case ImportViewModel import:
+                RootFrame.Navigate(typeof(ImportPage), import);
+                break;
             case RecoveryKitViewModel kit:
                 RootFrame.Navigate(typeof(RecoveryKitPage), kit);
                 break;

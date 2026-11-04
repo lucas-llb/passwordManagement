@@ -1,8 +1,10 @@
 using System.Globalization;
+using System.Text;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using PasswordManager.App.E2E.Tests.Localization;
 using PasswordManager.Core.Passwords;
+using PasswordManager.Core.Vault;
 
 namespace PasswordManager.App.E2E.Tests;
 
@@ -90,6 +92,7 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "EntriesTitle");
         AssertNameFromResources(app, "EntriesNew");
         AssertNameFromResources(app, "EntriesExport");
+        AssertNameFromResources(app, "EntriesImport");
         AssertNameFromResources(app, "EntriesLock");
         AssertNameFromResources(app, "EntriesList");
         AssertNameFromResources(app, "EntriesSearch");
@@ -410,6 +413,169 @@ public sealed class LocalizationE2ETests
     }
 
     [Fact]
+    public void ImportPage_TextsComeFromResources()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        Assert.Single(app.Items("ProfilesList")).Patterns.Invoke.Pattern.Invoke();
+        app.TypePassword(SeededVault.Password);
+        app.Invoke("UnlockButton");
+        app.WaitFor("EntriesList");
+        var imports = Directory.CreateDirectory(Path.Combine(app.VaultsDirectory, "imports")).FullName;
+        app.Invoke("EntriesImport");
+
+        // Choosing a file.
+        app.WaitFor("ImportTitle");
+        app.WaitGone("EntriesList");
+        AssertNameFromResources(app, "ImportTitle");
+        AssertNameFromResources(app, "ImportIntro");
+        AssertNameFromResources(app, "ImportChoose");
+        AssertNameFromResources(app, "ImportBack", "NavBack");
+        AssertEveryTextFromResourcesOrData(app);
+
+        // The ring is shown while the open dialog is up. While it spins, WinUI puts its own busy state, in the system
+        // language, before the name, so the name must end with the resw value. The dialog itself is Windows', also in the
+        // system language, so the sweeps run only once it is closed.
+        app.Invoke("ImportChoose");
+        app.WaitFileDialog();
+        Assert.EndsWith(" " + AppResources.ExpectedName("ImportProgress"), app.WaitFor("ImportProgress").Name, StringComparison.Ordinal);
+        app.CancelFileDialog();
+        app.WaitGone("ImportProgress");
+
+        // Every refusal of a whole file.
+        var tooLarge = Path.Combine(imports, "grande.csv");
+        using (var big = File.Create(tooLarge))
+        {
+            big.SetLength(VaultImport.MaxFileBytes + 1L);
+        }
+
+        var locked = Path.Combine(imports, "bloqueado.csv");
+        File.WriteAllText(locked, "name,password\r\na,b\r\n");
+        var tooMany = Encoding.UTF8.GetBytes("name,password\r\n" + string.Concat(Enumerable.Repeat("a,b\r\n", VaultImport.MaxEntries + 1)));
+        byte[] utf16 = [.. Encoding.Unicode.GetPreamble(), .. Encoding.Unicode.GetBytes("name,password\r\n")];
+        (string FileName, byte[] Contents, string Message)[] refusals =
+        [
+            ("nota.txt", Encoding.UTF8.GetBytes("texto"), AppResources.Strings["ImportErrorUnsupportedFile"]),
+            ("texto.pmvault", Encoding.UTF8.GetBytes("isto não é um cofre"), AppResources.Strings["ImportErrorInvalidVaultFile"]),
+            ("utf16.csv", utf16, AppResources.Strings["ImportErrorInvalidEncoding"]),
+            ("cabecalho.csv", Encoding.UTF8.GetBytes("a,b,c\r\n1,2,3\r\n"), AppResources.Strings["ImportErrorInvalidHeader"]),
+            ("malformado.csv", Encoding.UTF8.GetBytes("name,password\r\na,\"sem fim\r\n"), AppResources.Format("ImportErrorMalformedCsv", 2)),
+            ("muitos.csv", tooMany, AppResources.Strings["ImportErrorTooManyEntries"]),
+        ];
+        foreach (var (fileName, contents, message) in refusals)
+        {
+            var path = Path.Combine(imports, fileName);
+            File.WriteAllBytes(path, contents);
+            ChooseAndExpectError(app, path, message);
+        }
+
+        ChooseAndExpectError(app, tooLarge, AppResources.Strings["ImportErrorTooLarge"]);
+
+        // A file another program is writing cannot be read (the app shuts writers out while it reads). The dialog still
+        // lists it, which a file opened without sharing would not be.
+        using (new FileStream(locked, FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
+        {
+            ChooseAndExpectError(app, locked, AppResources.Strings["ImportErrorReadFailed"]);
+        }
+
+        // A .pmvault asks for its password. The box is empty, so the PasswordBox reveal button, named by WinUI, is not shown.
+        const string vaultFileName = "backup.pmvault";
+        var vaultFile = Path.Combine(imports, vaultFileName);
+        SeededVault.CopyVector("export", vaultFile);
+        app.Invoke("ImportChoose");
+        app.OpenInFileDialog(vaultFile);
+        app.WaitFor("ImportPassword");
+        var fileNameText = AppResources.Format("ImportFileName", vaultFileName);
+        app.WaitName("ImportFileName", fileNameText);
+        AssertNameFromResources(app, "ImportPassword");
+        AssertNameFromResources(app, "ImportOpen");
+        AssertNameFromResources(app, "ImportChoose");
+        AssertNameFromResources(app, "ImportBack", "NavBack");
+        AssertEveryTextFromResourcesOrData(app, fileNameText);
+
+        app.SetValue("ImportPassword", "senha-errada-ficticia");
+        app.Invoke("ImportOpen");
+        app.WaitName("ImportError", AppResources.Strings["ImportErrorWrongPassword"]);
+        app.WaitEnabled("ImportOpen");
+        AssertEveryTextFromResourcesOrData(app, fileNameText, AppResources.Strings["ImportErrorWrongPassword"]);
+
+        // A CSV: three records with a column the app does not keep, the last one with too few fields.
+        var rows = new[]
+        {
+            (Title: "Conta importada A", Username: "usuario-a", Url: "https://a.example.com"),
+            (Title: "Conta importada B", Username: "usuario-b", Url: "https://b.example.com"),
+        };
+        const string csvFileName = "contas.csv";
+        var csvFile = Path.Combine(imports, csvFileName);
+        File.WriteAllText(
+            csvFile,
+            "name,url,username,password,notes,folder,login_totp\r\n"
+            + "Conta importada A,https://a.example.com,usuario-a,Senha-ficticia-A,Nota A,Pasta A,totp-ficticio-a\r\n"
+            + "Conta importada B,https://b.example.com,usuario-b,Senha-ficticia-B,,,totp-ficticio-b\r\n"
+            + "Linha curta\r\n",
+            new UTF8Encoding(false));
+        app.Invoke("ImportChoose");
+        app.OpenInFileDialog(csvFile);
+        var summary = AppResources.Format("ImportSummary", rows.Length, 0);
+        app.WaitName("ImportSummary", summary);
+        var csvText = AppResources.Format("ImportFileName", csvFileName);
+        var rejected = AppResources.Format("ImportRejected", 1, 4);
+        var ignored = AppResources.Format("ImportIgnoredColumns", "login_totp");
+        string[] rowTexts = [.. rows.SelectMany(row => new[] { row.Title, row.Username, row.Url })];
+        AssertNameFromResources(app, "ImportPreviewList");
+        AssertNameFromResources(app, "ImportConfirm");
+        AssertNameFromResources(app, "ImportBack", "NavBack");
+        Assert.Equal(csvText, app.WaitFor("ImportFileName").Name);
+        Assert.Equal(rejected, app.WaitFor("ImportRejected").Name);
+        Assert.Equal(ignored, app.WaitFor("ImportIgnoredColumns").Name);
+        Assert.Null(app.Find("ImportPolicy"));
+        Assert.Null(app.Find("ImportNothing"));
+        AssertEveryTextFromResourcesOrData(app, [csvText, summary, rejected, ignored, .. rowTexts]);
+
+        // A save that fails (a folder where the temp file goes) keeps the preview with its message.
+        var blocker = Directory.CreateDirectory(SeededVault.VaultPath(app.VaultsDirectory) + ".tmp").FullName;
+        app.Invoke("ImportConfirm");
+        app.WaitName("ImportError", AppResources.Strings["ImportErrorSaveFailed"]);
+        app.WaitEnabled("ImportConfirm");
+        AssertEveryTextFromResourcesOrData(app, [csvText, summary, rejected, ignored, .. rowTexts]);
+
+        // The confirmation is the resw format with the three counts, and a CSV adds the reminder to delete it.
+        Directory.Delete(blocker);
+        app.Invoke("ImportConfirm");
+        var done = AppResources.Format("ImportDone", rows.Length, 0, 0);
+        app.WaitName("ImportDone", done);
+        AssertNameFromResources(app, "ImportDoneCsvReminder");
+        AssertNameFromResources(app, "ImportBack", "NavBack");
+        app.WaitGone("ImportError");
+        AssertEveryTextFromResourcesOrData(app, done);
+
+        // The same file again: both rows are duplicates now, and Skip would write nothing. The duplicate rows say so in their
+        // item names (a format, so data to the sweep), and the choice of what to do with them appears with its help.
+        app.Invoke("ImportBack");
+        app.WaitFor("EntriesList");
+        app.WaitGone("ImportTitle");
+        app.Invoke("EntriesImport");
+        app.WaitFor("ImportTitle");
+        app.Invoke("ImportChoose");
+        app.OpenInFileDialog(csvFile);
+        var duplicates = AppResources.Format("ImportSummary", 0, rows.Length);
+        app.WaitName("ImportSummary", duplicates);
+        string[] duplicateNames = [.. rows.Select(row => AppResources.Format("ImportRowDuplicateName", row.Title))];
+        AssertNameFromResources(app, "ImportPolicy");
+        AssertNameFromResources(app, "ImportPolicyHelp");
+        AssertNameFromResources(app, "ImportNothing");
+        Assert.Equal(
+            [AppResources.Strings["ImportPolicySkip"], AppResources.Strings["ImportPolicyDuplicate"], AppResources.Strings["ImportPolicyReplace"]],
+            app.OptionNames("ImportPolicy"));
+        Assert.Equal(duplicateNames, app.WaitItems("ImportPreviewList", rows.Length).Select(item => item.Name));
+        AssertEveryTextFromResourcesOrData(app, [csvText, duplicates, rejected, ignored, .. rowTexts, .. duplicateNames]);
+
+        // Replace gives it something to write, and the note that nothing is left to import goes away.
+        app.SelectOption("ImportPolicy", AppResources.Strings["ImportPolicyReplace"]);
+        app.WaitGone("ImportNothing");
+        AssertEveryTextFromResourcesOrData(app, [csvText, duplicates, rejected, ignored, .. rowTexts, .. duplicateNames]);
+    }
+
+    [Fact]
     public void EmptyVault_EntriesEmptyTextComesFromResources()
     {
         using var app = AppSession.Launch(SeededVault.SeedEmpty);
@@ -420,6 +586,16 @@ public sealed class LocalizationE2ETests
         AssertNameFromResources(app, "EntriesEmpty");
         Assert.Empty(app.Items("EntriesList"));
         AssertEveryTextFromResourcesOrData(app);
+    }
+
+    // Choose a file through the open dialog and expect the page to refuse it with this message, back at the first step.
+    private static void ChooseAndExpectError(AppSession app, string path, string message)
+    {
+        app.Invoke("ImportChoose");
+        app.OpenInFileDialog(path);
+        app.WaitName("ImportError", message);
+        app.WaitEnabled("ImportChoose");
+        AssertEveryTextFromResourcesOrData(app, message);
     }
 
     // The AutomationId of an element is its x:Uid, except the shared back button, whose uid is NavBack.

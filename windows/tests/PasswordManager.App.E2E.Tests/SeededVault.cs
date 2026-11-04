@@ -17,6 +17,13 @@ internal static class SeededVault
     // Password of the test vector without entries; its manifest is read on demand, only the tests that seed it need it.
     public static string EmptyPassword => ReadManifest("empty").GetProperty("password").GetString()!;
 
+    // Password of the export test vector: a .pmvault export with its own password and two entries that entries-unicode does
+    // not hold (W-25 imports it). Its manifest is read on demand.
+    public static string ExportPassword => ReadManifest("export").GetProperty("password").GetString()!;
+
+    public static JsonElement[] ExportEntries =>
+        [.. ReadManifest("export").GetProperty("content").GetProperty("entries").EnumerateArray()];
+
     public static JsonElement[] Entries => [.. Manifest.GetProperty("content").GetProperty("entries").EnumerateArray()];
 
     // The 2,000-entry vault of the list performance test: built here through Core (no test vector, since spec/test-vectors
@@ -32,6 +39,11 @@ internal static class SeededVault
     public static void SeedEmpty(string directory) => SeedVector(directory, "empty");
 
     public static void SeedProfileOnly(string directory) => WriteProfileList(directory);
+
+    // Copies a test vector file (for example "export") to a path of the test's choosing, to be imported from there; the
+    // vector in spec/test-vectors is never touched.
+    public static void CopyVector(string vectorName, string destinationPath) =>
+        File.Copy(Path.Combine(AppSession.Metadata("TestVectorsDir"), $"{vectorName}.pmvault"), destinationPath);
 
     // Entry i (1..2000) is "Entrada {i:D4}", in folder "Pasta {i % 5}", and a favorite when i % 7 == 0.
     public static void SeedLarge(string directory)

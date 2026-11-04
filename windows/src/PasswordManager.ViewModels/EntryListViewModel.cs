@@ -121,8 +121,30 @@ public sealed partial class EntryListViewModel : PageViewModel
     [RelayCommand]
     private void OpenExport() => _navigation.NavigateTo(new ExportViewModel(this, _navigation));
 
+    /// <summary>Opens the import page, above this list; Back returns here.</summary>
+    [RelayCommand]
+    private void OpenImport() => _navigation.NavigateTo(new ImportViewModel(this, _navigation, _clock));
+
     /// <summary>The full path of the app's vaults folder, which the export page refuses as a destination.</summary>
     internal string VaultsDirectory => _repository.VaultsDirectory;
+
+    /// <summary>The entries of the open vault, as last saved. Readable off the UI thread.</summary>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked.</exception>
+    internal IReadOnlyList<VaultEntry> CurrentEntries => _session.Content.Entries;
+
+    /// <summary>
+    /// Decrypts a <c>.pmvault</c> to import with its own password. Nothing changes: not the session, and not the disk. It
+    /// runs Argon2id at the cost the file chose, so callers run it off the UI thread; a lock does not wait for it.
+    /// </summary>
+    /// <param name="file">The whole file bytes. Not modified; the caller zeroes them.</param>
+    /// <param name="password">The file password. Not modified; the caller zeroes it.</param>
+    /// <exception cref="VaultAuthenticationException"><paramref name="password"/> is wrong, or the file was altered.</exception>
+    /// <exception cref="VaultFormatException">The file is not a valid vault file.</exception>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked.</exception>
+    /// <exception cref="ArgumentException"><paramref name="password"/> contains an invalid surrogate.</exception>
+    internal VaultContent DecryptImport(ReadOnlySpan<byte> file, ReadOnlySpan<char> password) => _session.Import(file, password);
 
     /// <summary>
     /// Builds an encrypted export of the open vault under its own fresh key and <paramref name="password"/>. Nothing
@@ -231,8 +253,34 @@ public sealed partial class EntryListViewModel : PageViewModel
     // Saves the new entries (on failure the session and the disk stay unchanged), then rebuilds the list from them.
     private void Write(VaultEntry[] entries)
     {
-        _session.Save(_session.Content with { Entries = entries });
+        SaveEntries(entries);
+        ApplySavedEntries(entries);
+    }
 
+    /// <summary>
+    /// Saves <paramref name="entries"/> as the whole entry list of the session and on disk. It touches only the session,
+    /// so it can run off the UI thread; <see cref="ApplySavedEntries"/> then rebuilds this list, on the UI thread.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">The vault was locked and disposed.</exception>
+    /// <exception cref="InvalidOperationException">The vault is locked.</exception>
+    /// <exception cref="IOException">The write failed; the session and the disk are unchanged.</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was denied; the session and the disk are unchanged.</exception>
+    internal void SaveEntries(VaultEntry[] entries) => _session.Save(_session.Content with { Entries = entries });
+
+    /// <summary>
+    /// Rebuilds the entries, the search index and the folders from <paramref name="entries"/> and applies the filter
+    /// again. UI thread only. A locked vault changes nothing, so a save that ended after a lock can never repopulate the
+    /// list.
+    /// </summary>
+    /// <returns>False, with nothing changed, when the vault is locked.</returns>
+    internal bool ApplySavedEntries(VaultEntry[] entries)
+    {
+        if (!IsOpen)
+        {
+            return false;
+        }
+
+        LastOpened = null;
         Entries = entries;
         _index = BuildIndex(entries);
         Folders = DistinctFolders(entries);
@@ -240,10 +288,11 @@ public sealed partial class EntryListViewModel : PageViewModel
         {
             // Clearing the folder applies the filter again.
             SelectedFolder = null;
-            return;
+            return true;
         }
 
         ApplyFilter();
+        return true;
     }
 
     /// <summary>
