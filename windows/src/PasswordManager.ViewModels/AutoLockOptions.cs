@@ -1,8 +1,9 @@
 namespace PasswordManager.ViewModels;
 
 /// <summary>
-/// When <see cref="AutoLock"/> locks an open vault. Nothing is persisted yet: the app builds the options at startup
-/// (the settings screen comes later).
+/// When <see cref="AutoLock"/> locks an open vault. The app builds them from the saved preferences
+/// (<see cref="AppSettings.AutoLockOptions"/>) and hands new ones to <see cref="AutoLock.ApplyOptions"/> when the user
+/// changes a setting.
 /// </summary>
 public sealed record AutoLockOptions
 {

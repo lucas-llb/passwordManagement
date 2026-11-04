@@ -4,7 +4,7 @@ namespace PasswordManager.Core.Vault;
 
 /// <summary>
 /// The one Core entry point the UI uses for a profile's vault: create, unlock, lock, save, change or verify the
-/// master password, export and import. It only composes <see cref="VaultFile"/>, <see cref="VaultHeader"/>,
+/// master password, replace the Recovery Kit, export and import. It only composes <see cref="VaultFile"/>, <see cref="VaultHeader"/>,
 /// <see cref="KeySlot"/>, <see cref="VaultBody"/>, <see cref="MasterPassword"/> and <see cref="RecoveryKit"/>; it
 /// adds no cryptography.
 /// </summary>
@@ -18,17 +18,21 @@ namespace PasswordManager.Core.Vault;
 /// never lets a body be sealed with a zeroed key. The gate also serializes writes, which <see cref="VaultFile"/>
 /// requires. <see cref="Import"/> is the one exception: it holds the gate only to check the state, because its Argon2id
 /// cost comes from the file being imported and a lock must not wait for a cost a file chose.</para>
-/// <para><see cref="Create"/>, <see cref="Unlock"/>, <see cref="ChangePassword"/>, <see cref="VerifyPassword"/>,
-/// <see cref="Export"/> and <see cref="Import"/> run Argon2id (about one second at the default parameters), so
-/// callers run them off the UI thread.</para>
-/// <para>Password and kit-text buffers are never modified, except the <c>kitText</c> output of <see cref="Create"/>;
-/// the caller owns and zeroes them. Exceptions never carry secrets or file content.</para>
+/// <para><see cref="Create"/>, <see cref="Unlock"/>, <see cref="ChangePassword"/>, <see cref="PrepareRecoveryKit"/>,
+/// <see cref="VerifyPassword"/>, <see cref="Export"/> and <see cref="Import"/> run Argon2id (about one second at the
+/// default parameters), so callers run them off the UI thread.</para>
+/// <para>A change of credentials (<see cref="ChangePassword"/>, <see cref="CommitRecoveryKit"/>) also leaves the new
+/// file in the <c>.bak</c> copy, so the replaced credential stops opening the file beside the vault. Older copies made
+/// elsewhere keep opening with the credential they were made under.</para>
+/// <para>Password and kit-text buffers are never modified, except the <c>kitText</c> output of <see cref="Create"/> and
+/// <see cref="PrepareRecoveryKit"/>; the caller owns and zeroes them. Exceptions never carry secrets or file content.</para>
 /// </remarks>
 public sealed class VaultSession : IDisposable
 {
     private const string LockedMessage = "Vault session is locked.";
     private const string AlreadyUnlockedMessage = "Vault session is already unlocked.";
     private const string ParametersOutOfRangeMessage = "KDF parameters are outside the format bounds.";
+    private const string StaleReplacementMessage = "Vault file changed since the recovery kit was prepared.";
 
     private readonly Lock _gate = new();
     private readonly byte[] _vaultKey = GC.AllocateArray<byte>(VaultFormat.KeySize, pinned: true);
@@ -233,6 +237,7 @@ public sealed class VaultSession : IDisposable
     /// <summary>
     /// Replaces the master password: only the type-1 slot changes (the Vault Key, the kit slot and unknown slots stay)
     /// and the body is re-sealed under a fresh nonce. The new file is written atomically; the session stays unlocked.
+    /// The <c>.bak</c> copy receives the new file too, best effort, so the old password stops opening it.
     /// </summary>
     /// <remarks>Costs two Argon2id runs, so callers run it off the UI thread.</remarks>
     /// <param name="currentPassword">The current master password. Not modified; the caller zeroes it.</param>
@@ -252,9 +257,64 @@ public sealed class VaultSession : IDisposable
             var file = RequireUnlockedFile();
             var newFile = MasterPassword.Change(file, currentPassword, newPassword, _newSlotParameters);
 
-            VaultFile.Write(VaultPath, newFile);
+            VaultFile.WriteCredentialChange(VaultPath, newFile);
 
             _file = newFile;
+        }
+    }
+
+    /// <summary>
+    /// First phase of replacing the Recovery Kit: generates a new kit and builds the new file, whose type-2 slot wraps
+    /// the Vault Key with it (a vault with no kit slot gains one). <b>Nothing is written</b>, so the old kit keeps
+    /// working until <see cref="CommitRecoveryKit"/>, after the user has written the new one down.
+    /// </summary>
+    /// <remarks>Costs one Argon2id run, so callers run it off the UI thread.</remarks>
+    /// <param name="kitText">Receives the kit text, exactly <see cref="RecoveryKit.TextLength"/> chars. Written only on
+    /// success; the caller zeroes it after showing it.</param>
+    /// <returns>The replacement to pass to <see cref="CommitRecoveryKit"/>.</returns>
+    /// <exception cref="ObjectDisposedException">The session is disposed.</exception>
+    /// <exception cref="InvalidOperationException">The session is locked.</exception>
+    /// <exception cref="ArgumentException"><paramref name="kitText"/> has the wrong length.</exception>
+    public RecoveryKitReplacement PrepareRecoveryKit(Span<char> kitText)
+    {
+        lock (_gate)
+        {
+            var file = RequireUnlockedFile();
+            var newFile = RecoveryKit.Create(file, _vaultKey, _newSlotParameters, kitText);
+
+            return new RecoveryKitReplacement(file, newFile);
+        }
+    }
+
+    /// <summary>
+    /// Second phase of replacing the Recovery Kit: writes the prepared file atomically, so the old kit stops opening
+    /// it. The <c>.bak</c> copy receives the new file too, best effort. The session stays unlocked. A replacement is
+    /// valid only for the exact file it was built from, so it never overwrites a newer save or password.
+    /// </summary>
+    /// <param name="replacement">The result of <see cref="PrepareRecoveryKit"/>.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="replacement"/> is null.</exception>
+    /// <exception cref="ObjectDisposedException">The session is disposed.</exception>
+    /// <exception cref="InvalidOperationException">The session is locked, or the file changed since
+    /// <see cref="PrepareRecoveryKit"/>; nothing is written.</exception>
+    /// <exception cref="IOException">The write failed; the file on disk and the session are unchanged, and the same
+    /// replacement can be committed again.</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was denied; the file on disk and the session are
+    /// unchanged, and the same replacement can be committed again.</exception>
+    public void CommitRecoveryKit(RecoveryKitReplacement replacement)
+    {
+        ArgumentNullException.ThrowIfNull(replacement);
+
+        lock (_gate)
+        {
+            var file = RequireUnlockedFile();
+            if (!ReferenceEquals(replacement.BaseFile, file))
+            {
+                throw new InvalidOperationException(StaleReplacementMessage);
+            }
+
+            VaultFile.WriteCredentialChange(VaultPath, replacement.NewFile);
+
+            _file = replacement.NewFile;
         }
     }
 

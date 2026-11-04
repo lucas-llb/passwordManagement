@@ -27,7 +27,7 @@ public sealed class AutoLockTests : IDisposable
     // Profiles -> Unlock, the way the app gets there.
     private (ProfilesViewModel ProfilesPage, UnlockViewModel Unlock) OpenUnlockOf(Profile profile)
     {
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         _navigation.ResetTo(profilesPage);
         profilesPage.OpenProfileCommand.Execute(profile);
 
@@ -116,7 +116,7 @@ public sealed class AutoLockTests : IDisposable
     {
         var autoLock = CreateAutoLock();
         var profile = CreateProfile();
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         _navigation.ResetTo(profilesPage);
         Assert.False(autoLock.IsVaultOpen);
@@ -299,7 +299,7 @@ public sealed class AutoLockTests : IDisposable
     {
         var autoLock = CreateAutoLock(new AutoLockOptions(Timeout, lockOnMinimize: true));
         CreateProfile();
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         _navigation.ResetTo(profilesPage);
         var navigated = 0;
         _navigation.Navigated += (_, _) => navigated++;
@@ -419,6 +419,54 @@ public sealed class AutoLockTests : IDisposable
     }
 
     [Fact]
+    public async Task SessionLock_OnSettingsPage_LocksTheVault()
+    {
+        var autoLock = CreateAutoLock();
+        var (profile, list) = await OpenVault();
+        list.OpenSettingsCommand.Execute(null);
+        Assert.IsType<SettingsViewModel>(_navigation.Current);
+        Assert.True(autoLock.IsVaultOpen);
+
+        autoLock.OnSessionLocked();
+
+        var unlock = Assert.IsType<UnlockViewModel>(_navigation.Current);
+        Assert.Equal(profile, unlock.Profile);
+        Assert.False(list.IsOpen);
+        Assert.Empty(list.Entries);
+        Assert.False(autoLock.IsVaultOpen);
+        Assert.True(_navigation.GoBack());
+        Assert.IsType<ProfilesViewModel>(_navigation.Current);
+        Assert.False(_navigation.CanGoBack);
+    }
+
+    [Fact]
+    public async Task SessionLock_OnNewKitPage_LocksAndOldKitStays()
+    {
+        var autoLock = CreateAutoLock();
+        var (profile, list) = await OpenVault();
+        list.OpenSettingsCommand.Execute(null);
+        await Assert.IsType<SettingsViewModel>(_navigation.Current).GenerateKitCommand.ExecuteAsync(Chars(TestProfiles.Password));
+        var kitPage = Assert.IsType<NewRecoveryKitViewModel>(_navigation.Current);
+        var newKit = new string(kitPage.KitText);
+        var path = _profiles.Repository.GetVaultPath(profile.Id);
+        var bytes = File.ReadAllBytes(path);
+        Assert.True(autoLock.IsVaultOpen);
+
+        autoLock.OnSessionLocked();
+
+        var unlock = Assert.IsType<UnlockViewModel>(_navigation.Current);
+        Assert.Equal(profile, unlock.Profile);
+        Assert.False(list.IsOpen);
+        Assert.False(autoLock.IsVaultOpen);
+        Assert.True(kitPage.KitText.IsEmpty);
+
+        // The file did not change, so the kit it already held is still the valid one, and the one that was shown is not.
+        Assert.Equal(bytes, File.ReadAllBytes(path));
+        var key = new byte[VaultFormat.KeySize];
+        Assert.Throws<VaultAuthenticationException>(() => RecoveryKit.Unlock(bytes, newKit, key));
+    }
+
+    [Fact]
     public async Task OnMinimized_DefaultOptions_KeepsTheVaultOpen()
     {
         var autoLock = CreateAutoLock();
@@ -442,6 +490,76 @@ public sealed class AutoLockTests : IDisposable
         Assert.IsType<UnlockViewModel>(_navigation.Current);
         Assert.False(list.IsOpen);
         Assert.False(autoLock.IsVaultOpen);
+    }
+
+    [Fact]
+    public async Task ApplyOptions_ShorterTimeout_LocksAtTheNewTimeout()
+    {
+        var autoLock = CreateAutoLock();
+        var (_, list) = await OpenVault();
+        var shorter = TimeSpan.FromMinutes(1);
+
+        autoLock.ApplyOptions(new AutoLockOptions(shorter, lockOnMinimize: false));
+
+        Assert.Equal(shorter, autoLock.Options.IdleTimeout);
+        _profiles.Time.Advance(shorter - TimeSpan.FromMilliseconds(1));
+        autoLock.CheckIdle();
+        Assert.Same(list, _navigation.Current);
+        Assert.True(list.IsOpen);
+
+        _profiles.Time.Advance(TimeSpan.FromMilliseconds(1));
+        autoLock.CheckIdle();
+
+        Assert.IsType<UnlockViewModel>(_navigation.Current);
+        Assert.False(list.IsOpen);
+    }
+
+    [Fact]
+    public async Task ApplyOptions_CountsAsActivity()
+    {
+        var autoLock = CreateAutoLock();
+        var (_, list) = await OpenVault();
+
+        // Longer idle than the new timeout: a shorter timeout must not lock at once, it starts counting from now.
+        _profiles.Time.Advance(Timeout - TimeSpan.FromSeconds(1));
+        var shorter = TimeSpan.FromMinutes(1);
+        autoLock.ApplyOptions(new AutoLockOptions(shorter, lockOnMinimize: false));
+        autoLock.CheckIdle();
+
+        Assert.Same(list, _navigation.Current);
+        Assert.True(list.IsOpen);
+
+        _profiles.Time.Advance(shorter);
+        autoLock.CheckIdle();
+
+        Assert.IsType<UnlockViewModel>(_navigation.Current);
+        Assert.False(list.IsOpen);
+    }
+
+    [Fact]
+    public async Task ApplyOptions_LockOnMinimize_AppliesAtOnce()
+    {
+        var autoLock = CreateAutoLock();
+        var (_, list) = await OpenVault();
+
+        autoLock.OnMinimized();
+        Assert.True(list.IsOpen);
+
+        autoLock.ApplyOptions(new AutoLockOptions(Timeout, lockOnMinimize: true));
+        autoLock.OnMinimized();
+
+        Assert.IsType<UnlockViewModel>(_navigation.Current);
+        Assert.False(list.IsOpen);
+        Assert.False(autoLock.IsVaultOpen);
+    }
+
+    [Fact]
+    public void ApplyOptions_Null_Throws()
+    {
+        var autoLock = CreateAutoLock();
+
+        Assert.Throws<ArgumentNullException>(() => autoLock.ApplyOptions(null!));
+        Assert.Same(AutoLockOptions.Default, autoLock.Options);
     }
 
     [Fact]

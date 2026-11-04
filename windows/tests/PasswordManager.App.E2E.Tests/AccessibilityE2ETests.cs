@@ -200,12 +200,12 @@ public sealed class AccessibilityE2ETests
         app.PressKey(VirtualKeyShort.UP);
         app.WaitFocus(EntryItem(0));
 
-        // The list is the last stop, so Tab wraps to the first control: New entry, Export, Import and Lock, then the search
-        // and the two filters in document order, and back to the list.
+        // The list is the last stop, so Tab wraps to the first control: New entry, Export, Import, Settings and Lock, then the
+        // search and the two filters in document order, and back to the list.
         foreach (var expected in new[]
         {
-            "EntriesNew", "EntriesExport", "EntriesImport", "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly", "EntriesFolder",
-            EntryItem(0),
+            "EntriesNew", "EntriesExport", "EntriesImport", "EntriesSettings", "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly",
+            "EntriesFolder", EntryItem(0),
         })
         {
             app.PressKey(VirtualKeyShort.TAB);
@@ -295,6 +295,8 @@ public sealed class AccessibilityE2ETests
         app.WaitFocus("EntriesExport");
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesImport");
+        app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("EntriesSettings");
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesLock");
         app.PressKey(VirtualKeyShort.RETURN);
@@ -562,6 +564,91 @@ public sealed class AccessibilityE2ETests
     }
 
     [Fact]
+    public void Settings_TabEscape_WorkWithoutMouse()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        OpenProfileByKeyboard(app);
+        UnlockByKeyboard(app, SeededVault.Password);
+        app.WaitFocus(EntryItem(0));
+
+        // Settings sits between Import and Lock; Enter on it opens the page with the focus on the first control.
+        OpenSettingsByKeyboard(app);
+        AssertEveryFocusableElementIsNamed(app);
+
+        // Tab follows the document order through the preferences, the two password forms and the links, wraps to Back (first
+        // in the document) and on to the timeout again.
+        foreach (var expected in new[]
+        {
+            "SettingsLockOnMinimize", "SettingsCurrentPassword", "SettingsNewPassword", "SettingsConfirmPassword",
+            "SettingsChangePassword", "SettingsKitPassword", "SettingsKitGenerate", "SettingsExport", "SettingsImport",
+            "SettingsBack", "SettingsIdleTimeout",
+        })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        foreach (var expected in new[] { "SettingsBack", "SettingsImport", "SettingsExport", "SettingsKitGenerate" })
+        {
+            app.PressChord(VirtualKeyShort.SHIFT, VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Escape is Back: the list gets the focus back as it does from any page above it, on its first entry here.
+        app.WaitFor("SettingsIdleTimeout").Focus();
+        app.WaitFocus("SettingsIdleTimeout");
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitFor("EntriesList");
+        app.WaitGone("SettingsTitle");
+        app.WaitFocus(EntryItem(0));
+    }
+
+    [Fact]
+    public void NewKit_TabEscape_WorkWithoutMouse()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        OpenProfileByKeyboard(app);
+        UnlockByKeyboard(app, SeededVault.Password);
+        app.WaitFocus(EntryItem(0));
+        OpenSettingsByKeyboard(app);
+
+        // Enter in the master password box generates the kit, as the button does: the kit page starts on its checkbox.
+        app.SetValue("SettingsKitPassword", SeededVault.Password);
+        app.WaitFor("SettingsKitPassword").Focus();
+        app.WaitFocus("SettingsKitPassword");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("NewKitText");
+        app.WaitGone("SettingsTitle");
+        app.WaitFocus("NewKitSavedCheck");
+        AssertEveryFocusableElementIsNamed(app);
+
+        // Concluir is disabled until the box is checked, so Tab skips it.
+        app.WaitEnabled("NewKitDone", expected: false);
+        foreach (var expected in new[] { "NewKitCancel", "NewKitSavedCheck" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Space checks the box, and Concluir joins the cycle between the box and Cancelar.
+        app.PressKey(VirtualKeyShort.SPACE);
+        app.WaitEnabled("NewKitDone");
+        Assert.True(app.IsToggled("NewKitSavedCheck"));
+        foreach (var expected in new[] { "NewKitDone", "NewKitCancel", "NewKitSavedCheck" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Escape is Cancelar: back on the settings, with the focus on the first control and nothing replaced.
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitFor("SettingsTitle");
+        app.WaitGone("NewKitTitle");
+        app.WaitFocus("SettingsIdleTimeout");
+        Assert.Null(app.Find("SettingsKitReplaced"));
+    }
+
+    [Fact]
     public void EmptyVault_FocusStartsOnNew()
     {
         using var app = AppSession.Launch(SeededVault.SeedEmpty);
@@ -587,6 +674,22 @@ public sealed class AccessibilityE2ETests
         app.WaitFor("ImportTitle");
         app.WaitGone("EntriesList");
         app.WaitFocus("ImportChoose");
+    }
+
+    // List to the settings page by keyboard: Tab past New entry, Export and Import to Settings, Enter, and the page starts on
+    // the idle timeout.
+    private static void OpenSettingsByKeyboard(AppSession app)
+    {
+        foreach (var expected in new[] { "EntriesNew", "EntriesExport", "EntriesImport", "EntriesSettings" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("SettingsTitle");
+        app.WaitGone("EntriesList");
+        app.WaitFocus("SettingsIdleTimeout");
     }
 
     private static string EntryItem(int index) =>

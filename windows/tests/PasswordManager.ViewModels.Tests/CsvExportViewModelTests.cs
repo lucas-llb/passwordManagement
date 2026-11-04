@@ -65,7 +65,8 @@ public sealed class CsvExportViewModelTests : IDisposable
             repository ?? _profiles.Repository,
             _navigation,
             _profiles.Throttle,
-            _profiles.Clipboard);
+            _profiles.Clipboard,
+            _profiles.Settings);
         _navigation.ResetTo(list);
         list.OpenExportCommand.Execute(null);
         var export = Assert.IsType<ExportViewModel>(_navigation.Current);

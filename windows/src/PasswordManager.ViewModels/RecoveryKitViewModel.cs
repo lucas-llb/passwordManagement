@@ -21,6 +21,7 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
     private readonly INavigationService _navigation;
     private readonly UnlockThrottle _throttle;
     private readonly ClipboardGuard _clipboard;
+    private readonly AppSettings _settings;
     private bool _cleared;
 
     /// <summary>Takes ownership of <paramref name="kitText"/>: this page zeroes it when it is left.</summary>
@@ -30,6 +31,7 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
     /// <param name="navigation">The page stack.</param>
     /// <param name="throttle">The unlock delay, passed on to the profile list shown after the page.</param>
     /// <param name="clipboard">The clipboard guard, passed on to the profile list shown after the page.</param>
+    /// <param name="settings">The app preferences, passed on to the profile list shown after the page.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="kitText"/> does not have the length of a kit text.</exception>
     public RecoveryKitViewModel(
@@ -37,13 +39,15 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
         ProfileRepository repository,
         INavigationService navigation,
         UnlockThrottle throttle,
-        ClipboardGuard clipboard)
+        ClipboardGuard clipboard,
+        AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(kitText);
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(throttle);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(settings);
 
         if (kitText.Length != RecoveryKit.TextLength)
         {
@@ -55,6 +59,7 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
         _navigation = navigation;
         _throttle = throttle;
         _clipboard = clipboard;
+        _settings = settings;
     }
 
     /// <summary>The kit text to show; empty once the page has been left.</summary>
@@ -84,6 +89,6 @@ public sealed partial class RecoveryKitViewModel : PageViewModel
             return;
         }
 
-        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle, _clipboard));
+        _navigation.ResetTo(new ProfilesViewModel(_repository, _navigation, _throttle, _clipboard, _settings));
     }
 }

@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="PasswordManager.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:PasswordManager.App.Views"
+    Loaded="OnLoaded"
+    Unloaded="OnUnloaded">
+
+    <!--
+        One screen for everything (AGENTS 6), in the Tab order of the document: the auto-lock preferences, the change of the
+        master password, a new Recovery Kit, and the links to export and import. Back comes first in the document, so Tab wraps
+        from the last link to it. The preference controls stay enabled while a password command runs; the delay blocks both
+        password forms, so both countdowns show the same number and each message stays beside its form.
+    -->
+    <Grid Padding="24" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                AutomationProperties.AutomationId="SettingsTitle"
+                x:Uid="SettingsTitle"
+                Style="{StaticResource TitleTextBlockStyle}" />
+            <StackPanel
+                Grid.Column="1"
+                Orientation="Horizontal"
+                Spacing="12">
+                <Button
+                    AutomationProperties.AutomationId="SettingsBack"
+                    x:Uid="NavBack"
+                    Command="{x:Bind ViewModel.GoBackCommand}"
+                    KeyboardAcceleratorPlacementMode="Hidden">
+                    <Button.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="Escape" />
+                    </Button.KeyboardAccelerators>
+                </Button>
+                <ProgressRing
+                    Width="24"
+                    Height="24"
+                    AutomationProperties.AutomationId="SettingsProgress"
+                    x:Uid="SettingsProgress"
+                    IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel
+                MaxWidth="480"
+                Padding="0,0,16,0"
+                HorizontalAlignment="Left"
+                Spacing="32">
+
+                <!--  Auto-lock: global preferences, saved as soon as they change.  -->
+                <StackPanel Spacing="12">
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsLockHeading"
+                        AutomationProperties.HeadingLevel="Level2"
+                        x:Uid="SettingsLockHeading"
+                        Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <ComboBox
+                        x:Name="IdleCombo"
+                        MinWidth="200"
+                        AutomationProperties.AutomationId="SettingsIdleTimeout"
+                        x:Uid="SettingsIdleTimeout"
+                        SelectionChanged="OnIdleSelectionChanged" />
+                    <CheckBox
+                        AutomationProperties.AutomationId="SettingsLockOnMinimize"
+                        x:Uid="SettingsLockOnMinimize"
+                        IsChecked="{x:Bind ViewModel.LockOnMinimize, Mode=TwoWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsScopeNote"
+                        x:Uid="SettingsScopeNote"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsSaveFailed"
+                        x:Uid="SettingsSaveFailed"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind ViewModel.SaveFailed, Mode=OneWay}" />
+                </StackPanel>
+
+                <!--  Change the master password: the current one is checked for real, and the delay is the unlock screen's.  -->
+                <StackPanel Spacing="12">
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsPasswordHeading"
+                        AutomationProperties.HeadingLevel="Level2"
+                        x:Uid="SettingsPasswordHeading"
+                        Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsPasswordNote"
+                        x:Uid="SettingsPasswordNote"
+                        TextWrapping="Wrap" />
+                    <PasswordBox
+                        x:Name="CurrentInput"
+                        AutomationProperties.AutomationId="SettingsCurrentPassword"
+                        x:Uid="SettingsCurrentPassword" />
+                    <PasswordBox
+                        x:Name="NewInput"
+                        AutomationProperties.AutomationId="SettingsNewPassword"
+                        x:Uid="SettingsNewPassword"
+                        PasswordChanged="OnNewPasswordChanged" />
+                    <PasswordBox
+                        x:Name="ConfirmInput"
+                        AutomationProperties.AutomationId="SettingsConfirmPassword"
+                        x:Uid="SettingsConfirmPassword"
+                        KeyDown="OnConfirmKeyDown" />
+
+                    <!--  Advisory only: the hard rule stays the 12-character minimum. The bar takes its colors from the theme.  -->
+                    <TextBlock
+                        x:Name="StrengthText"
+                        AutomationProperties.AutomationId="SettingsStrength"
+                        Text="{x:Bind local:PasswordStrengthMessages.Text(ViewModel.Strength), Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:PasswordStrengthMessages.Visible(ViewModel.Strength), Mode=OneWay}" />
+                    <ProgressBar
+                        AutomationProperties.AutomationId="SettingsStrengthBar"
+                        AutomationProperties.LabeledBy="{x:Bind StrengthText}"
+                        Maximum="5"
+                        ShowError="{x:Bind local:CreateProfilePage.IsWeak(ViewModel.Strength), Mode=OneWay}"
+                        ShowPaused="{x:Bind local:CreateProfilePage.IsFair(ViewModel.Strength), Mode=OneWay}"
+                        Value="{x:Bind local:CreateProfilePage.StrengthValue(ViewModel.Strength), Mode=OneWay}"
+                        Visibility="{x:Bind local:PasswordStrengthMessages.Visible(ViewModel.Strength), Mode=OneWay}" />
+
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsPasswordTooShort"
+                        x:Uid="SettingsPasswordTooShort"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:CreateProfilePage.IsTooShort(ViewModel.PasswordError), Mode=OneWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsPasswordMismatch"
+                        x:Uid="SettingsPasswordMismatch"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:CreateProfilePage.IsMismatch(ViewModel.PasswordError), Mode=OneWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsPasswordWrong"
+                        x:Uid="SettingsPasswordWrong"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:SettingsPage.IsPasswordWrong(ViewModel.Outcome), Mode=OneWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsPasswordFailed"
+                        x:Uid="SettingsPasswordFailed"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:SettingsPage.IsPasswordFailed(ViewModel.Outcome), Mode=OneWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsPasswordChanged"
+                        x:Uid="SettingsPasswordChanged"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:SettingsPage.IsPasswordChanged(ViewModel.Outcome), Mode=OneWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsPasswordCountdown"
+                        Text="{x:Bind local:CsvExportPage.RetryText(ViewModel.RetrySeconds), Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:CsvExportPage.IsCountingDown(ViewModel.RetrySeconds), Mode=OneWay}" />
+
+                    <Button
+                        AutomationProperties.AutomationId="SettingsChangePassword"
+                        x:Uid="SettingsChangePassword"
+                        Click="OnChangePasswordClick"
+                        IsEnabled="{x:Bind local:SettingsPage.CanSubmit(ViewModel.IsBusy, ViewModel.RetrySeconds), Mode=OneWay}"
+                        Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
+
+                <!--  A new Recovery Kit: the master password is checked first; nothing is written until the kit page is concluded.  -->
+                <StackPanel Spacing="12">
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsKitHeading"
+                        AutomationProperties.HeadingLevel="Level2"
+                        x:Uid="SettingsKitHeading"
+                        Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsKitNote"
+                        x:Uid="SettingsKitNote"
+                        TextWrapping="Wrap" />
+                    <PasswordBox
+                        x:Name="KitPasswordInput"
+                        AutomationProperties.AutomationId="SettingsKitPassword"
+                        x:Uid="SettingsKitPassword"
+                        KeyDown="OnKitPasswordKeyDown" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsKitWrong"
+                        x:Uid="SettingsKitWrong"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:SettingsPage.IsKitWrong(ViewModel.Outcome), Mode=OneWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsKitFailed"
+                        x:Uid="SettingsKitFailed"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:SettingsPage.IsKitFailed(ViewModel.Outcome), Mode=OneWay}" />
+                    <TextBlock
+                        x:Name="KitReplacedText"
+                        AutomationProperties.AutomationId="SettingsKitReplaced"
+                        x:Uid="SettingsKitReplaced"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:SettingsPage.IsKitReplaced(ViewModel.Outcome), Mode=OneWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsKitCountdown"
+                        Text="{x:Bind local:CsvExportPage.RetryText(ViewModel.RetrySeconds), Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind local:CsvExportPage.IsCountingDown(ViewModel.RetrySeconds), Mode=OneWay}" />
+                    <Button
+                        x:Name="KitGenerateButton"
+                        AutomationProperties.AutomationId="SettingsKitGenerate"
+                        x:Uid="SettingsKitGenerate"
+                        Click="OnKitGenerateClick"
+                        IsEnabled="{x:Bind local:SettingsPage.CanSubmit(ViewModel.IsBusy, ViewModel.RetrySeconds), Mode=OneWay}" />
+                </StackPanel>
+
+                <!--  Export and import keep their own pages; their Back returns here.  -->
+                <StackPanel Spacing="12">
+                    <TextBlock
+                        AutomationProperties.AutomationId="SettingsDataHeading"
+                        AutomationProperties.HeadingLevel="Level2"
+                        x:Uid="SettingsDataHeading"
+                        Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button
+                            AutomationProperties.AutomationId="SettingsExport"
+                            x:Uid="SettingsExport"
+                            Command="{x:Bind ViewModel.OpenExportCommand}" />
+                        <Button
+                            AutomationProperties.AutomationId="SettingsImport"
+                            x:Uid="SettingsImport"
+                            Command="{x:Bind ViewModel.OpenImportCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

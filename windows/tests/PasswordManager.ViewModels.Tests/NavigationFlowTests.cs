@@ -21,7 +21,7 @@ public sealed class NavigationFlowTests : IDisposable
         var navigation = new NavigationService();
 
         // Profiles: the root, listing both profiles.
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         var profilesPage = Assert.IsType<ProfilesViewModel>(navigation.Current);
         Assert.Equal(2, profilesPage.Profiles.Count);
         Assert.False(navigation.CanGoBack);
@@ -68,7 +68,7 @@ public sealed class NavigationFlowTests : IDisposable
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         var navigation = new NavigationService();
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         var profilesPage = Assert.IsType<ProfilesViewModel>(navigation.Current);
         profilesPage.OpenProfileCommand.Execute(alice);
         await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
@@ -93,7 +93,7 @@ public sealed class NavigationFlowTests : IDisposable
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         var navigation = new NavigationService();
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
         await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
         var list = Assert.IsType<EntryListViewModel>(navigation.Current);
@@ -123,7 +123,7 @@ public sealed class NavigationFlowTests : IDisposable
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         var navigation = new NavigationService();
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
         await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
         var list = Assert.IsType<EntryListViewModel>(navigation.Current);
@@ -150,7 +150,7 @@ public sealed class NavigationFlowTests : IDisposable
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         var navigation = new NavigationService();
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
         await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
         var list = Assert.IsType<EntryListViewModel>(navigation.Current);
@@ -174,7 +174,7 @@ public sealed class NavigationFlowTests : IDisposable
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         var navigation = new NavigationService();
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
         await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
         var list = Assert.IsType<EntryListViewModel>(navigation.Current);
@@ -198,7 +198,7 @@ public sealed class NavigationFlowTests : IDisposable
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         var navigation = new NavigationService();
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
         await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
         var list = Assert.IsType<EntryListViewModel>(navigation.Current);
@@ -218,11 +218,117 @@ public sealed class NavigationFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task OpenSettings_PushesSettings_BackReturnsToList()
+    {
+        var navigation = new NavigationService();
+        var list = await OpenListOfAlice(navigation);
+
+        // List -> Settings: the stack is [List, Settings].
+        list.OpenSettingsCommand.Execute(null);
+        var settings = Assert.IsType<SettingsViewModel>(navigation.Current);
+        Assert.True(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+
+        // Settings -> List: the vault is still open and the list is the root again.
+        settings.GoBackCommand.Execute(null);
+        Assert.Same(list, navigation.Current);
+        Assert.False(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+        Assert.NotEmpty(list.Entries);
+    }
+
+    [Fact]
+    public async Task Settings_ExportLink_BackReturnsToSettings()
+    {
+        var navigation = new NavigationService();
+        var list = await OpenListOfAlice(navigation);
+        list.OpenSettingsCommand.Execute(null);
+        var settings = Assert.IsType<SettingsViewModel>(navigation.Current);
+
+        // Settings -> Export: the stack is [List, Settings, Export].
+        settings.OpenExportCommand.Execute(null);
+        var export = Assert.IsType<ExportViewModel>(navigation.Current);
+
+        export.GoBackCommand.Execute(null);
+        Assert.Same(settings, navigation.Current);
+        Assert.True(navigation.CanGoBack);
+
+        settings.GoBackCommand.Execute(null);
+        Assert.Same(list, navigation.Current);
+        Assert.False(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+    }
+
+    [Fact]
+    public async Task Settings_ImportLink_BackReturnsToSettings()
+    {
+        var navigation = new NavigationService();
+        var list = await OpenListOfAlice(navigation);
+        list.OpenSettingsCommand.Execute(null);
+        var settings = Assert.IsType<SettingsViewModel>(navigation.Current);
+
+        // Settings -> Import: the stack is [List, Settings, Import].
+        settings.OpenImportCommand.Execute(null);
+        var import = Assert.IsType<ImportViewModel>(navigation.Current);
+
+        import.GoBackCommand.Execute(null);
+        Assert.Same(settings, navigation.Current);
+        Assert.True(navigation.CanGoBack);
+
+        settings.GoBackCommand.Execute(null);
+        Assert.Same(list, navigation.Current);
+        Assert.False(navigation.CanGoBack);
+        Assert.True(list.IsOpen);
+    }
+
+    [Fact]
+    public async Task Lock_FromSettings_EndsOnUnlockWithProfilesBehind()
+    {
+        var navigation = new NavigationService();
+        var list = await OpenListOfAlice(navigation);
+        list.OpenSettingsCommand.Execute(null);
+        Assert.IsType<SettingsViewModel>(navigation.Current);
+
+        // The lock replaces the whole stack, settings page included.
+        list.LockCommand.Execute(null);
+
+        Assert.IsType<UnlockViewModel>(navigation.Current);
+        Assert.False(list.IsOpen);
+        Assert.Empty(list.Entries);
+        Assert.True(navigation.GoBack());
+        Assert.IsType<ProfilesViewModel>(navigation.Current);
+        Assert.False(navigation.CanGoBack);
+    }
+
+    [Fact]
+    public async Task Lock_FromNewKit_EndsOnUnlockWithProfilesBehind()
+    {
+        var navigation = new NavigationService();
+        var list = await OpenListOfAlice(navigation);
+        list.OpenSettingsCommand.Execute(null);
+        var settings = Assert.IsType<SettingsViewModel>(navigation.Current);
+        await settings.GenerateKitCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
+        var kit = Assert.IsType<NewRecoveryKitViewModel>(navigation.Current);
+        Assert.False(kit.KitText.IsEmpty);
+
+        // The lock replaces the whole stack, and the kit page zeroes its kit on the way out.
+        list.LockCommand.Execute(null);
+
+        Assert.IsType<UnlockViewModel>(navigation.Current);
+        Assert.True(kit.KitText.IsEmpty);
+        Assert.False(list.IsOpen);
+        Assert.Empty(list.Entries);
+        Assert.True(navigation.GoBack());
+        Assert.IsType<ProfilesViewModel>(navigation.Current);
+        Assert.False(navigation.CanGoBack);
+    }
+
+    [Fact]
     public async Task Flow_ProfilesUnlockListDetail_CopyGoesThroughTheSharedGuard()
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         var navigation = new NavigationService();
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
 
         var detail = await OpenFirstEntry(navigation, alice);
         detail.CopyPasswordCommand.Execute(null);
@@ -243,7 +349,7 @@ public sealed class NavigationFlowTests : IDisposable
     {
         var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         var navigation = new NavigationService();
-        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         var detail = await OpenFirstEntry(navigation, alice);
         detail.CopyPasswordCommand.Execute(null);
         detail.GoBackCommand.Execute(null);
@@ -271,7 +377,7 @@ public sealed class NavigationFlowTests : IDisposable
     public async Task Flow_CreateKitProfilesUnlockDetail_CopyStillWorks()
     {
         var navigation = new NavigationService();
-        var profilesPage = new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard);
+        var profilesPage = new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         navigation.ResetTo(profilesPage);
 
         // Profiles -> Create -> Kit, with the real Argon2id cost: the page opens its own create page.
@@ -298,6 +404,17 @@ public sealed class NavigationFlowTests : IDisposable
         Assert.Equal("senha-ficticia-3", _profiles.ClipboardHost.Text);
         Assert.True(_profiles.ClipboardHost.IsMarkedPrivate);
         Assert.True(detail.IsPasswordCopied);
+    }
+
+    // Profiles -> Unlock -> List, by running the commands as the app does.
+    private async Task<EntryListViewModel> OpenListOfAlice(NavigationService navigation)
+    {
+        var alice = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
+        navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
+        Assert.IsType<ProfilesViewModel>(navigation.Current).OpenProfileCommand.Execute(alice);
+        await Assert.IsType<UnlockViewModel>(navigation.Current).UnlockCommand.ExecuteAsync(TestProfiles.Password.ToCharArray());
+
+        return Assert.IsType<EntryListViewModel>(navigation.Current);
     }
 
     // Profiles -> Unlock -> List -> the first entry, by running the commands as the app does.

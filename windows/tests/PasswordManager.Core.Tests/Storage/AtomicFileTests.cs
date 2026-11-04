@@ -85,4 +85,38 @@ public sealed class AtomicFileTests : IDisposable
         Assert.Equal(First, File.ReadAllBytes(_path));
         Assert.False(File.Exists(BackupPath));
     }
+
+    [Fact]
+    public async Task Write_TargetHeldForAMoment_RetriesAndReplacesIt()
+    {
+        AtomicFile.Write(_path, First, keepBackup: false);
+        var held = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.None);
+        var release = Task.Run(
+            async () =>
+            {
+                await Task.Delay(30, TestContext.Current.CancellationToken);
+                await held.DisposeAsync();
+            },
+            TestContext.Current.CancellationToken);
+
+        AtomicFile.Write(_path, Second, keepBackup: false);
+        await release;
+
+        Assert.Equal(Second, File.ReadAllBytes(_path));
+        Assert.False(File.Exists(TempPath));
+    }
+
+    [Fact]
+    public void Write_TargetStaysHeld_ThrowsAndKeepsTargetUnchanged()
+    {
+        AtomicFile.Write(_path, First, keepBackup: false);
+
+        using (new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.Throws<UnauthorizedAccessException>(() => AtomicFile.Write(_path, Second, keepBackup: false));
+        }
+
+        Assert.Equal(First, File.ReadAllBytes(_path));
+        Assert.False(File.Exists(TempPath));
+    }
 }

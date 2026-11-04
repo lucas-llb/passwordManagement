@@ -251,6 +251,108 @@ public sealed class VaultFileTests : IDisposable
         Assert.Equal(message, exception.Message);
     }
 
+    // --- Backup after a change of credentials ---
+
+    [Fact]
+    public void RefreshBackup_CopiesCurrentOverBackup()
+    {
+        VaultFile.Write(_path, V0);
+        VaultFile.Write(_path, V2);
+        Assert.Equal(V0, File.ReadAllBytes(BackupPath));
+
+        VaultFile.RefreshBackup(_path);
+
+        Assert.Equal(V2, File.ReadAllBytes(BackupPath));
+        Assert.Equal(V2, File.ReadAllBytes(_path));
+    }
+
+    [Fact]
+    public void RefreshBackup_BackupLocked_IsIgnored()
+    {
+        VaultFile.Write(_path, V0);
+        VaultFile.Write(_path, V2);
+
+        using (new FileStream(BackupPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            VaultFile.RefreshBackup(_path);
+        }
+
+        Assert.Equal(V0, File.ReadAllBytes(BackupPath));
+        Assert.Equal(V2, File.ReadAllBytes(_path));
+    }
+
+    [Fact]
+    public void RefreshBackup_FileMissing_IsIgnored()
+    {
+        VaultFile.RefreshBackup(_path);
+
+        Assert.Empty(Directory.GetFileSystemEntries(_directory.FullName));
+    }
+
+    [Fact]
+    public void WriteCredentialChange_BackupHoldsNewFile()
+    {
+        VaultFile.Write(_path, V0);
+        VaultFile.Write(_path, V2);
+
+        VaultFile.WriteCredentialChange(_path, V1);
+
+        Assert.Equal(V1, File.ReadAllBytes(_path));
+        Assert.Equal(V1, File.ReadAllBytes(BackupPath));
+        Assert.False(File.Exists(TempPath));
+    }
+
+    [Fact]
+    public void WriteCredentialChange_BackupLocked_WritesTheFile()
+    {
+        VaultFile.Write(_path, V0);
+        VaultFile.Write(_path, V2);
+
+        using (new FileStream(BackupPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            VaultFile.WriteCredentialChange(_path, V1);
+        }
+
+        Assert.Equal(V1, File.ReadAllBytes(_path));
+        Assert.Equal(V0, File.ReadAllBytes(BackupPath));
+        Assert.False(File.Exists(TempPath));
+    }
+
+    [Fact]
+    public void WriteCredentialChange_TargetLocked_ThrowsAndKeepsFileAndBackup()
+    {
+        VaultFile.Write(_path, V0);
+        VaultFile.Write(_path, V2);
+
+        using (new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            // Windows reports a sharing violation on the rename as access denied, so either documented exception is accepted.
+            var exception = Record.Exception(() => VaultFile.WriteCredentialChange(_path, V1));
+
+            Assert.True(exception is IOException or UnauthorizedAccessException, $"Unexpected exception: {exception}");
+        }
+
+        Assert.Equal(V2, File.ReadAllBytes(_path));
+        Assert.Equal(V0, File.ReadAllBytes(BackupPath));
+        Assert.False(File.Exists(TempPath));
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidFiles))]
+    public void WriteCredentialChange_InvalidContents_ThrowsAndTouchesNothing(string name, byte[] contents, string message)
+    {
+        Assert.NotNull(name);
+        VaultFile.Write(_path, V0);
+        VaultFile.Write(_path, V2);
+
+        var exception = Assert.Throws<VaultFormatException>(() => VaultFile.WriteCredentialChange(_path, contents));
+
+        Assert.Equal(message, exception.Message);
+        Assert.Equal(V2, File.ReadAllBytes(_path));
+        Assert.Equal(V0, File.ReadAllBytes(BackupPath));
+        Assert.False(File.Exists(TempPath));
+    }
+
     // --- Export ---
 
     // A one-slot export: only the export password, no kit slot.

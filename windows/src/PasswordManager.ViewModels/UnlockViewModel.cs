@@ -13,30 +13,35 @@ public sealed partial class UnlockViewModel : PageViewModel
     private readonly INavigationService _navigation;
     private readonly UnlockThrottle _throttle;
     private readonly ClipboardGuard _clipboard;
+    private readonly AppSettings _settings;
 
     /// <param name="profile">The profile to unlock.</param>
     /// <param name="repository">The profile store, for the vault path.</param>
     /// <param name="navigation">The page stack.</param>
     /// <param name="throttle">The progressive delay after wrong passwords, shared by every unlock screen of the app.</param>
     /// <param name="clipboard">The clipboard guard, passed on to the entry list this page opens.</param>
+    /// <param name="settings">The app preferences, passed on to the entry list this page opens.</param>
     public UnlockViewModel(
         Profile profile,
         ProfileRepository repository,
         INavigationService navigation,
         UnlockThrottle throttle,
-        ClipboardGuard clipboard)
+        ClipboardGuard clipboard,
+        AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(throttle);
         ArgumentNullException.ThrowIfNull(clipboard);
+        ArgumentNullException.ThrowIfNull(settings);
 
         Profile = profile;
         _repository = repository;
         _navigation = navigation;
         _throttle = throttle;
         _clipboard = clipboard;
+        _settings = settings;
 
         // Back is blocked while Argon2id runs: a successful unlock is the only thing that leaves this page then.
         UnlockCommand.PropertyChanged += (_, e) =>
@@ -126,7 +131,7 @@ public sealed partial class UnlockViewModel : PageViewModel
             _throttle.RecordSuccess(Profile.Id);
 
             // The list becomes the root: Back can never return to this screen while the vault is open.
-            _navigation.ResetTo(new EntryListViewModel(Profile, session, _repository, _navigation, _throttle, _clipboard));
+            _navigation.ResetTo(new EntryListViewModel(Profile, session, _repository, _navigation, _throttle, _clipboard, _settings));
         }
     }
 

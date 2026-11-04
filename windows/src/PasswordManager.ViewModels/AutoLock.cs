@@ -45,8 +45,22 @@ public sealed partial class AutoLock : ObservableObject
         Refresh();
     }
 
-    /// <summary>When to lock.</summary>
-    public AutoLockOptions Options { get; }
+    /// <summary>When to lock; replaced by <see cref="ApplyOptions"/>.</summary>
+    public AutoLockOptions Options { get; private set; }
+
+    /// <summary>
+    /// Replaces the options, for the settings page: the next <see cref="CheckIdle"/> and <see cref="OnMinimized"/> use
+    /// them. It counts as activity, so a shorter timeout never locks at once: the idle clock starts again from now.
+    /// </summary>
+    /// <param name="options">When to lock from now on.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+    public void ApplyOptions(AutoLockOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        Options = options;
+        ReportActivity();
+    }
 
     /// <summary>
     /// True while a vault is open, on its list or on a page above it. The view runs the idle timer only while this is

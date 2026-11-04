@@ -11,6 +11,7 @@ namespace PasswordManager.Core.Vault;
 /// over the original. The original is never absent or torn: on failure it stays as it was.</para>
 /// <para>There is no directory fsync, so a power cut right after <see cref="Write"/> returns may roll back to the
 /// previous version, never to a torn file. The <c>.bak</c> copy is not flushed and is best-effort.</para>
+/// <para>After a change of credentials, the <c>.bak</c> receives the new file instead (<see cref="WriteCredentialChange"/>).</para>
 /// <para>The temp name is fixed, so callers must serialize writes to one profile. Directories are never created.</para>
 /// </remarks>
 public static class VaultFile
@@ -56,6 +57,59 @@ public static class VaultFile
         VaultHeader.Parse(contents);
 
         AtomicFile.Write(fullPath, contents, keepBackup: true);
+    }
+
+    /// <summary>
+    /// Validates <paramref name="contents"/>, writes it atomically over <paramref name="path"/> and then copies the new
+    /// file over <c>&lt;path&gt;.bak</c> (<see cref="RefreshBackup"/>), for a change of credentials: a copy of the
+    /// previous version would keep opening with the credential that was just replaced.
+    /// </summary>
+    /// <remarks>
+    /// The previous version is not copied first, as <see cref="Write"/> does, because a locked <c>.bak</c> would then
+    /// fail the write. A failed write leaves the file and the <c>.bak</c> as they were; a crash between the write and the
+    /// copy leaves the old <c>.bak</c> until the next write.
+    /// </remarks>
+    /// <param name="path">Path of the vault file. Its directory must exist.</param>
+    /// <param name="contents">The whole file bytes. Not modified.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is empty.</exception>
+    /// <exception cref="VaultFormatException"><paramref name="contents"/> is not a valid v1 vault file; the disk is not touched.</exception>
+    /// <exception cref="IOException">The write failed; the original file is unchanged.</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was denied; the original file is unchanged.</exception>
+    internal static void WriteCredentialChange(string path, ReadOnlySpan<byte> contents)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        var fullPath = Path.GetFullPath(path);
+        VaultHeader.Parse(contents);
+
+        AtomicFile.Write(fullPath, contents, keepBackup: false);
+        RefreshBackup(fullPath);
+    }
+
+    /// <summary>
+    /// Copies the current file over <c>&lt;path&gt;.bak</c>. Best effort, like the <c>.bak</c> itself: a failure is
+    /// swallowed, because the file is already written, and the next write replaces the copy.
+    /// </summary>
+    /// <param name="path">Path of the vault file.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is empty.</exception>
+    internal static void RefreshBackup(string path)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        try
+        {
+            File.Copy(path, path + BackupSuffix, overwrite: true);
+        }
+        catch (IOException)
+        {
+            // Best effort: the next write replaces the copy.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Best effort, as above.
+        }
     }
 
     /// <summary>

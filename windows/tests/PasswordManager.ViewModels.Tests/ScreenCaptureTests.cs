@@ -19,8 +19,8 @@ public sealed class ScreenCaptureTests : IDisposable
     {
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password);
 
-        var profiles = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
-        var unlock = new UnlockViewModel(profile, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var profiles = new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
+        var unlock = new UnlockViewModel(profile, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         Assert.True(profiles.AllowsScreenCapture);
         Assert.True(unlock.AllowsScreenCapture);
@@ -32,7 +32,7 @@ public sealed class ScreenCaptureTests : IDisposable
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         using var session = _profiles.OpenSession(profile);
 
-        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
         var detail = new EntryDetailViewModel(list, list.Entries[0], _navigation, _profiles.Time);
         var newEntry = new EntryDetailViewModel(list, null, _navigation, _profiles.Time);
 
@@ -46,7 +46,7 @@ public sealed class ScreenCaptureTests : IDisposable
     {
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         using var session = _profiles.OpenSession(profile);
-        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         var export = new ExportViewModel(list, _navigation);
 
@@ -58,7 +58,7 @@ public sealed class ScreenCaptureTests : IDisposable
     {
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         using var session = _profiles.OpenSession(profile);
-        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         var csv = new CsvExportViewModel(list, _navigation);
 
@@ -70,7 +70,7 @@ public sealed class ScreenCaptureTests : IDisposable
     {
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
         using var session = _profiles.OpenSession(profile);
-        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         var import = new ImportViewModel(list, _navigation, _profiles.Time);
 
@@ -78,9 +78,24 @@ public sealed class ScreenCaptureTests : IDisposable
     }
 
     [Fact]
+    public void AllowsScreenCapture_SettingsAndNewKit_AreFalse()
+    {
+        var profile = _profiles.CreateProfile("Alice", TestProfiles.Password, TestProfiles.Entry("Mail"));
+        using var session = _profiles.OpenSession(profile);
+        var list = new EntryListViewModel(profile, session, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
+
+        var settings = new SettingsViewModel(list, _navigation);
+        var kitText = new char[RecoveryKit.TextLength];
+        var kit = new NewRecoveryKitViewModel(list, settings, _navigation, kitText, session.PrepareRecoveryKit(kitText));
+
+        Assert.False(settings.AllowsScreenCapture);
+        Assert.False(kit.AllowsScreenCapture);
+    }
+
+    [Fact]
     public void AllowsScreenCapture_CreateProfile_IsFalse()
     {
-        var create = new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard);
+        var create = new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         Assert.False(create.AllowsScreenCapture);
     }
@@ -93,7 +108,8 @@ public sealed class ScreenCaptureTests : IDisposable
             _profiles.Repository,
             _navigation,
             _profiles.Throttle,
-            _profiles.Clipboard);
+            _profiles.Clipboard,
+            _profiles.Settings);
 
         Assert.False(kit.AllowsScreenCapture);
     }
@@ -120,7 +136,7 @@ public sealed class ScreenCaptureTests : IDisposable
         _navigation.Navigated += (_, _) => captured.Add(_navigation.Current?.AllowsScreenCapture ?? false);
 
         // Profiles: the root.
-        _navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard));
+        _navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         var profilesPage = Assert.IsType<ProfilesViewModel>(_navigation.Current);
 
         // Profiles -> Unlock.
@@ -147,7 +163,7 @@ public sealed class ScreenCaptureTests : IDisposable
 
         // Profiles -> Create -> Kit -> Profiles: the master password and then the Recovery Kit are never capturable.
         _navigation.NavigateTo(
-            new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, TestProfiles.LowCost));
+            new CreateProfileViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings, TestProfiles.LowCost));
         var create = Assert.IsType<CreateProfileViewModel>(_navigation.Current);
         create.DisplayName = "Bob";
         await create.CreateCommand.ExecuteAsync(

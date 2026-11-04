@@ -95,6 +95,16 @@ public class VaultSessionTests
         return vaultKey;
     }
 
+    private static byte[] UnlockWithKitText(byte[] file, char[] kitText)
+    {
+        var vaultKey = new byte[VaultFormat.KeySize];
+        RecoveryKit.Unlock(file, kitText, vaultKey);
+        return vaultKey;
+    }
+
+    private static void AssertNewKitFails(byte[] file, char[] kitText) =>
+        AssertAuthenticationFailure(() => UnlockWithKitText(file, kitText));
+
     private static IReadOnlyList<VaultEntry> OpenEntries(byte[] file, byte[] vaultKey) =>
         VaultBody.Open(file, VaultHeader.Parse(file).BodyOffset, vaultKey).Entries;
 
@@ -517,7 +527,35 @@ public class VaultSessionTests
             Assert.Equal(Unknown3, SlotBytes(after, 3));
             Assert.Equal(Content.Entries, OpenEntries(after, UnlockWithKit(after)));
             Assert.Equal(LowCost, KdfParameters.ReadFromSlot(SlotBytes(after, VaultFormat.SlotTypePassword)));
-            Assert.Equal(VaultFull, File.ReadAllBytes(path + VaultFile.BackupSuffix));
+            var backup = File.ReadAllBytes(path + VaultFile.BackupSuffix);
+            Assert.Equal(after, backup);
+            AssertAuthenticationFailure(() => UnlockWithPassword(backup, Password));
+        });
+    }
+
+    [Fact]
+    public void ChangePassword_BackupLocked_StillSucceeds()
+    {
+        WithVault(path =>
+        {
+            var backupPath = path + VaultFile.BackupSuffix;
+            File.WriteAllBytes(backupPath, VaultFull);
+            using var session = OpenSession(path);
+
+            using (new FileStream(backupPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                session.ChangePassword(Password, NewPassword);
+            }
+
+            var after = VaultFile.Read(path);
+            Assert.Equal(Vk, UnlockWithPassword(after, NewPassword));
+            session.VerifyPassword(NewPassword);
+            AssertAuthenticationFailure(() => session.VerifyPassword(Password));
+            Assert.Equal(VaultFull, File.ReadAllBytes(backupPath));
+
+            session.Save(NewContent);
+
+            Assert.Equal(after, File.ReadAllBytes(backupPath));
         });
     }
 
@@ -559,6 +597,277 @@ public class VaultSessionTests
 
             session.Save(NewContent);
             Assert.Equal(NewContent.Entries, OpenEntries(VaultFile.Read(path), UnlockWithPassword(VaultFile.Read(path), Password)));
+        });
+    }
+
+    // --- PrepareRecoveryKit ---
+
+    [Fact]
+    public void PrepareRecoveryKit_WritesNothing_OldKitStillOpens()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var kitText = new char[RecoveryKit.TextLength];
+
+            session.PrepareRecoveryKit(kitText);
+
+            Assert.DoesNotContain('\0', kitText);
+            Assert.Equal([path], Directory.GetFileSystemEntries(Path.GetDirectoryName(path)!));
+            var disk = VaultFile.Read(path);
+            Assert.Equal(VaultFull, disk);
+            Assert.Equal(Vk, UnlockWithKit(disk));
+            AssertNewKitFails(disk, kitText);
+            Assert.True(session.IsUnlocked);
+        });
+    }
+
+    [Fact]
+    public void PrepareRecoveryKit_VaultWithoutKit_AddsSlotOnCommit()
+    {
+        WithVault(path =>
+        {
+            var noKit = VaultBody.Seal(VaultHeader.Build([KeySlot.CreatePasswordSlot(Password, LowCost, Vk)]), Vk, Content);
+            File.WriteAllBytes(path, noKit);
+            using var session = OpenSession(path);
+            var kitText = new char[RecoveryKit.TextLength];
+
+            session.CommitRecoveryKit(session.PrepareRecoveryKit(kitText));
+
+            var after = VaultFile.Read(path);
+            Assert.NotNull(VaultHeader.Parse(after).RecoveryKitSlotOffset);
+            Assert.Equal(SlotBytes(noKit, VaultFormat.SlotTypePassword), SlotBytes(after, VaultFormat.SlotTypePassword));
+            Assert.Equal(Content.Entries, OpenEntries(after, UnlockWithKitText(after, kitText)));
+        });
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(38)]
+    [InlineData(40)]
+    public void PrepareRecoveryKit_BadBufferLength_Throws(int length)
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+
+            var exception = Assert.Throws<ArgumentException>(() => session.PrepareRecoveryKit(new char[length]));
+
+            Assert.Equal("kitText", exception.ParamName);
+            Assert.Equal(VaultFull, VaultFile.Read(path));
+            Assert.True(session.IsUnlocked);
+        });
+    }
+
+    [Fact]
+    public void PrepareRecoveryKit_Locked_Throws()
+    {
+        WithVault(path =>
+        {
+            using var session = new VaultSession(path, LowCost);
+            var kitText = new char[RecoveryKit.TextLength];
+
+            Assert.Throws<InvalidOperationException>(() => session.PrepareRecoveryKit(kitText));
+
+            session.Unlock(Password);
+            session.Lock();
+
+            Assert.Throws<InvalidOperationException>(() => session.PrepareRecoveryKit(kitText));
+            Assert.All(kitText, c => Assert.Equal('\0', c));
+        });
+    }
+
+    [Fact]
+    public void PrepareRecoveryKit_Disposed_Throws()
+    {
+        WithVault(path =>
+        {
+            var session = OpenSession(path);
+            session.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => session.PrepareRecoveryKit(new char[RecoveryKit.TextLength]));
+        });
+    }
+
+    // --- CommitRecoveryKit ---
+
+    [Fact]
+    public void CommitRecoveryKit_NewKitOpensOldFails_OtherSlotsStay()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var content = session.Content;
+            var kitText = new char[RecoveryKit.TextLength];
+
+            session.CommitRecoveryKit(session.PrepareRecoveryKit(kitText));
+
+            var after = VaultFile.Read(path);
+            Assert.Equal(Vk, UnlockWithKitText(after, kitText));
+            AssertAuthenticationFailure(() => UnlockWithKit(after));
+            Assert.Equal(Vk, UnlockWithPassword(after, Password));
+            Assert.Equal(SlotBytes(VaultFull, VaultFormat.SlotTypePassword), SlotBytes(after, VaultFormat.SlotTypePassword));
+            Assert.Equal(Unknown3, SlotBytes(after, 3));
+            Assert.Equal(Content.Entries, OpenEntries(after, Vk));
+            Assert.NotEqual(BodyNonce(VaultFull), BodyNonce(after));
+            Assert.True(session.IsUnlocked);
+            Assert.Same(content, session.Content);
+            Assert.Equal(Vk, session.VaultKeyBufferForTesting);
+        });
+    }
+
+    [Fact]
+    public void CommitRecoveryKit_BackupHoldsNewFile()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var kitText = new char[RecoveryKit.TextLength];
+
+            session.CommitRecoveryKit(session.PrepareRecoveryKit(kitText));
+
+            var backup = File.ReadAllBytes(path + VaultFile.BackupSuffix);
+            Assert.Equal(VaultFile.Read(path), backup);
+            AssertAuthenticationFailure(() => UnlockWithKit(backup));
+            Assert.Equal(Vk, UnlockWithKitText(backup, kitText));
+        });
+    }
+
+    [Fact]
+    public void CommitRecoveryKit_ThenSave_KeepsNewKit()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var kitText = new char[RecoveryKit.TextLength];
+            session.CommitRecoveryKit(session.PrepareRecoveryKit(kitText));
+
+            session.Save(NewContent);
+
+            var after = VaultFile.Read(path);
+            Assert.Equal(NewContent.Entries, OpenEntries(after, UnlockWithKitText(after, kitText)));
+            AssertAuthenticationFailure(() => UnlockWithKit(after));
+            AssertAuthenticationFailure(() => UnlockWithKit(File.ReadAllBytes(path + VaultFile.BackupSuffix)));
+        });
+    }
+
+    [Fact]
+    public void CommitRecoveryKit_AfterSave_ThrowsAndWritesNothing()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var kitText = new char[RecoveryKit.TextLength];
+            var replacement = session.PrepareRecoveryKit(kitText);
+            session.Save(NewContent);
+            var saved = VaultFile.Read(path);
+            var backup = File.ReadAllBytes(path + VaultFile.BackupSuffix);
+
+            Assert.Throws<InvalidOperationException>(() => session.CommitRecoveryKit(replacement));
+
+            Assert.Equal(saved, VaultFile.Read(path));
+            Assert.Equal(backup, File.ReadAllBytes(path + VaultFile.BackupSuffix));
+            Assert.Equal(NewContent.Entries, OpenEntries(saved, UnlockWithKit(saved)));
+            AssertNewKitFails(saved, kitText);
+            Assert.True(session.IsUnlocked);
+        });
+    }
+
+    [Fact]
+    public void CommitRecoveryKit_AfterChangePassword_ThrowsAndWritesNothing()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var kitText = new char[RecoveryKit.TextLength];
+            var replacement = session.PrepareRecoveryKit(kitText);
+            session.ChangePassword(Password, NewPassword);
+            var changed = VaultFile.Read(path);
+
+            Assert.Throws<InvalidOperationException>(() => session.CommitRecoveryKit(replacement));
+
+            Assert.Equal(changed, VaultFile.Read(path));
+            Assert.Equal(Vk, UnlockWithPassword(changed, NewPassword));
+            Assert.Equal(Vk, UnlockWithKit(changed));
+            AssertNewKitFails(changed, kitText);
+        });
+    }
+
+    [Fact]
+    public void CommitRecoveryKit_Twice_SecondThrowsAndWritesNothing()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var replacement = session.PrepareRecoveryKit(new char[RecoveryKit.TextLength]);
+            session.CommitRecoveryKit(replacement);
+            var committed = VaultFile.Read(path);
+
+            Assert.Throws<InvalidOperationException>(() => session.CommitRecoveryKit(replacement));
+
+            Assert.Equal(committed, VaultFile.Read(path));
+        });
+    }
+
+    [Fact]
+    public void CommitRecoveryKit_Locked_ThrowsAndWritesNothing()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var replacement = session.PrepareRecoveryKit(new char[RecoveryKit.TextLength]);
+
+            session.Lock();
+
+            Assert.Throws<InvalidOperationException>(() => session.CommitRecoveryKit(replacement));
+            Assert.Equal(VaultFull, VaultFile.Read(path));
+            Assert.Equal([path], Directory.GetFileSystemEntries(Path.GetDirectoryName(path)!));
+
+            // Unlocking again reads the file anew, so the old replacement still does not apply.
+            session.Unlock(Password);
+
+            Assert.Throws<InvalidOperationException>(() => session.CommitRecoveryKit(replacement));
+            Assert.Equal(VaultFull, VaultFile.Read(path));
+        });
+    }
+
+    [Fact]
+    public void CommitRecoveryKit_Null_Throws()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+
+            Assert.Throws<ArgumentNullException>(() => session.CommitRecoveryKit(null!));
+        });
+    }
+
+    [Fact]
+    public void CommitRecoveryKit_WriteFails_KeepsOldFileAndRetrySucceeds()
+    {
+        WithVault(path =>
+        {
+            using var session = OpenSession(path);
+            var kitText = new char[RecoveryKit.TextLength];
+            var replacement = session.PrepareRecoveryKit(kitText);
+
+            using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                // Windows reports a sharing violation on the rename as access denied, so either documented exception is accepted.
+                var exception = Record.Exception(() => session.CommitRecoveryKit(replacement));
+
+                Assert.True(exception is IOException or UnauthorizedAccessException, $"Unexpected exception: {exception}");
+            }
+
+            Assert.Equal(VaultFull, VaultFile.Read(path));
+            Assert.Equal([path], Directory.GetFileSystemEntries(Path.GetDirectoryName(path)!));
+            Assert.True(session.IsUnlocked);
+
+            session.CommitRecoveryKit(replacement);
+
+            var after = VaultFile.Read(path);
+            Assert.Equal(Vk, UnlockWithKitText(after, kitText));
+            AssertAuthenticationFailure(() => UnlockWithKit(after));
         });
     }
 

@@ -10,7 +10,7 @@
 | `profiles.json` | lista de perfis `{"profiles":[…]}`: `id` (UUID), `displayName`, `createdAt`. Local ao dispositivo, nunca exportado, sem `.bak` (ver "profiles.json") | não |
 | `profiles.json.tmp` | temporário da gravação atômica da lista; só sobra após uma queda e é sobrescrito na próxima gravação | não |
 | `<id>.pmvault` | cofre do perfil (formato abaixo) | sim |
-| `<id>.pmvault.bak` | versão anterior do cofre | sim |
+| `<id>.pmvault.bak` | versão anterior do cofre; depois de uma troca de senha mestra ou de Kit de Recuperação, a versão **nova** (ver "Regras de escrita") | sim |
 | `<id>.pmvault.tmp` | temporário da gravação atômica; só sobra após uma queda e é sobrescrito na próxima gravação | sim |
 | `<id>.biometric` | (só Android) Vault Key envolvida pela chave do Keystore. **Fora do formato portátil**: formato privado do app, nunca exportado e excluído do backup (ver "Desbloqueio vinculado ao dispositivo") | sim |
 
@@ -143,6 +143,12 @@ Desbloqueio: a senha tenta só o slot tipo 1; o kit tenta só o slot tipo 2. Nun
   4. Renomear `<id>.pmvault.tmp` por cima de `<id>.pmvault`, de forma atômica.
   5. Ao final, com ou sem erro, apagar `<id>.pmvault.tmp` se ainda existir (melhor esforço). A gravação nunca cria pastas.
   - Resultado: o `<id>.pmvault` nunca deixa de existir; em falha, ele fica como estava.
+- Troca de credenciais (troca da senha mestra e novo Kit de Recuperação): é a **exceção** à regra de que o `.bak` guarda a versão anterior. Uma cópia da versão anterior ainda abriria com a credencial que acabou de ser trocada, então o `.bak` passa a receber a versão **nova**:
+  - O passo 3 da gravação atômica não acontece (o arquivo antigo não é copiado para o `.bak`). Depois do passo 4, copiar `<id>.pmvault` por cima de `<id>.pmvault.bak`.
+  - Essa cópia é de melhor esforço: se falhar (por exemplo, o `.bak` preso por outro programa), o erro é ignorado, porque o arquivo novo já está gravado, e o `.bak` fica como estava até a próxima gravação. Uma falha na gravação do arquivo deixa o `.bak` como estava.
+  - A gravação seguinte de entradas volta à regra normal (passo 3: o `.bak` guarda a versão anterior).
+  - Não muda o layout, a versão nem os vetores: é só a regra de quando o `.bak` é escrito.
+  - Não protege cópias antigas do cofre feitas fora do app: a Vault Key é a mesma (primeira regra desta seção), então uma cópia antiga abre com a credencial que valia nela e entrega a Vault Key que abre o arquivo atual.
 
 ## Kit de Recuperação
 
