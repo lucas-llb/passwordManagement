@@ -26,6 +26,10 @@ internal sealed class AppSession : IDisposable
     private const string SaveButtonId = "1";
     private const string CancelButtonId = "2";
 
+    // The open dialog (the Windows App SDK FileOpenPicker) names its file name box 1148, checked live. Its Open button
+    // keeps id 1, which a list item of the dialog shares, and it is a split button.
+    private const string OpenFileNameEditId = "1148";
+
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
     private readonly Application? _app;
@@ -251,6 +255,34 @@ internal sealed class AppSession : IDisposable
             () => name.Patterns.Value.Pattern.Value.Value == fullPath, Timeout, TimeSpan.FromMilliseconds(100), ignoreException: true).Success;
         Assert.True(typed, "The file name box did not take the path.");
         FileDialogButton(dialog, SaveButtonId).Patterns.Invoke.Pattern.Invoke();
+        WaitFileDialogGone();
+    }
+
+    // The open dialog counterpart of SaveInFileDialog: the full path goes in the file name box (edit 1148) through its
+    // ValuePattern, as a user who pastes a path does, and Open (id 1) is invoked. Id 1 also matches a list item of the
+    // dialog, and Open is a split button there, so the lookup accepts a split button as well as a plain button.
+    public void OpenInFileDialog(string fullPath)
+    {
+        var dialog = WaitFileDialog();
+        var name = Retry.WhileNull(
+            () => dialog.FindFirstDescendant(cf => cf.ByAutomationId(OpenFileNameEditId).And(cf.ByControlType(ControlType.Edit))),
+            Timeout,
+            TimeSpan.FromMilliseconds(100),
+            ignoreException: true).Result
+            ?? throw new InvalidOperationException("The file name box of the open dialog did not appear.");
+        name.Patterns.Value.Pattern.SetValue(fullPath);
+        var typed = Retry.WhileFalse(
+            () => name.Patterns.Value.Pattern.Value.Value == fullPath, Timeout, TimeSpan.FromMilliseconds(100), ignoreException: true).Success;
+        Assert.True(typed, "The file name box did not take the path.");
+
+        var open = Retry.WhileNull(
+            () => dialog.FindFirstDescendant(cf => cf.ByAutomationId(SaveButtonId)
+                .And(cf.ByControlType(ControlType.SplitButton).Or(cf.ByControlType(ControlType.Button)))),
+            Timeout,
+            TimeSpan.FromMilliseconds(100),
+            ignoreException: true).Result
+            ?? throw new InvalidOperationException("The Open button of the file dialog did not appear.");
+        open.Patterns.Invoke.Pattern.Invoke();
         WaitFileDialogGone();
     }
 

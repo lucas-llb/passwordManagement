@@ -376,6 +376,27 @@ public sealed class AutoLockTests : IDisposable
     }
 
     [Fact]
+    public async Task SessionLock_OnImportPage_LocksTheVault()
+    {
+        var autoLock = CreateAutoLock();
+        var (profile, list) = await OpenVault();
+        list.OpenImportCommand.Execute(null);
+        Assert.IsType<ImportViewModel>(_navigation.Current);
+        Assert.True(autoLock.IsVaultOpen);
+
+        autoLock.OnSessionLocked();
+
+        var unlock = Assert.IsType<UnlockViewModel>(_navigation.Current);
+        Assert.Equal(profile, unlock.Profile);
+        Assert.False(list.IsOpen);
+        Assert.Empty(list.Entries);
+        Assert.False(autoLock.IsVaultOpen);
+        Assert.True(_navigation.GoBack());
+        Assert.IsType<ProfilesViewModel>(_navigation.Current);
+        Assert.False(_navigation.CanGoBack);
+    }
+
+    [Fact]
     public async Task SessionLock_OnCsvExportPage_LocksTheVault()
     {
         var autoLock = CreateAutoLock();

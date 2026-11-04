@@ -824,6 +824,54 @@ public class VaultSessionTests
         });
     }
 
+    [Fact]
+    public async Task Import_LockDuringKdf_DoesNotWait()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var costly = VaultBody.Seal(
+            VaultHeader.Build([KeySlot.CreatePasswordSlot(ExportPassword, new KdfParameters(256 * 1024, 16), OtherVk)]),
+            OtherVk,
+            NewContent);
+        var directory = Directory.CreateTempSubdirectory("pm-vaultsession-");
+        try
+        {
+            var path = Path.Combine(directory.FullName, $"{Guid.NewGuid()}.pmvault");
+            VaultFile.Write(path, VaultFull);
+            using var session = OpenSession(path);
+
+            var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var import = Task.Factory.StartNew(
+                () =>
+                {
+                    started.SetResult();
+                    return session.Import(costly, ExportPassword);
+                },
+                cancellationToken,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
+
+            // Long enough to pass the state check, and far from the end of a KDF at this cost (about a second).
+            await started.Task.WaitAsync(cancellationToken);
+            await Task.Delay(100, cancellationToken);
+
+            session.Lock();
+
+            // A short wait, because a Lock that did wait returns only just before the import task completes.
+            var first = await Task.WhenAny(import, Task.Delay(50, cancellationToken));
+            Assert.NotSame(import, first);
+            Assert.False(session.IsUnlocked);
+            AssertAllZero(session.VaultKeyBufferForTesting);
+
+            var imported = await import;
+
+            Assert.Equal(NewContent.Entries, imported.Entries);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
     // --- Concurrency ---
 
     [Fact]

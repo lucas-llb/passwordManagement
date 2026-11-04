@@ -1,7 +1,9 @@
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.WindowsAPI;
+using PasswordManager.App.E2E.Tests.Localization;
 using PasswordManager.Core.Passwords;
+using PasswordManager.Core.Vault;
 
 namespace PasswordManager.App.E2E.Tests;
 
@@ -198,11 +200,12 @@ public sealed class AccessibilityE2ETests
         app.PressKey(VirtualKeyShort.UP);
         app.WaitFocus(EntryItem(0));
 
-        // The list is the last stop, so Tab wraps to the first control: New entry, Export and Lock, then the search and
-        // the two filters in document order, and back to the list.
+        // The list is the last stop, so Tab wraps to the first control: New entry, Export, Import and Lock, then the search
+        // and the two filters in document order, and back to the list.
         foreach (var expected in new[]
         {
-            "EntriesNew", "EntriesExport", "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly", "EntriesFolder", EntryItem(0),
+            "EntriesNew", "EntriesExport", "EntriesImport", "EntriesLock", "EntriesSearch", "EntriesFavoritesOnly", "EntriesFolder",
+            EntryItem(0),
         })
         {
             app.PressKey(VirtualKeyShort.TAB);
@@ -291,6 +294,8 @@ public sealed class AccessibilityE2ETests
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesExport");
         app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("EntriesImport");
+        app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesLock");
         app.PressKey(VirtualKeyShort.RETURN);
         app.WaitFor("UnlockPassword");
@@ -342,7 +347,7 @@ public sealed class AccessibilityE2ETests
         UnlockByKeyboard(app, SeededVault.Password);
         app.WaitFocus(EntryItem(0));
 
-        // Export sits between New entry and Lock; Enter on it opens the page with the focus on the password.
+        // Export sits between New entry and Import; Enter on it opens the page with the focus on the password.
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesNew");
         app.PressKey(VirtualKeyShort.TAB);
@@ -460,6 +465,103 @@ public sealed class AccessibilityE2ETests
     }
 
     [Fact]
+    public void Import_TabEscape_WorkWithoutMouse()
+    {
+        using var app = AppSession.Launch(SeededVault.Seed);
+        OpenProfileByKeyboard(app);
+        UnlockByKeyboard(app, SeededVault.Password);
+        app.WaitFocus(EntryItem(0));
+
+        // The files to import: the export vector (a .pmvault with its own password and two entries the vault lacks) and a
+        // CSV with a new entry first and a saved entry after it, so the second preview has duplicates.
+        var imports = Directory.CreateDirectory(Path.Combine(app.VaultsDirectory, "imports")).FullName;
+        var vaultFile = Path.Combine(imports, "backup.pmvault");
+        SeededVault.CopyVector("export", vaultFile);
+        var seeded = SeededVault.ReadContent(app.VaultsDirectory, SeededVault.Password).Entries;
+        var fresh = new VaultEntry
+        {
+            Id = Guid.NewGuid(),
+            Title = "Servidor novo fictício",
+            Username = "admin-novo",
+            Password = "Senha-nova-ficticia-888",
+            Url = "https://servidor.example.com",
+            CreatedAt = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 1, 2, 12, 0, 0, TimeSpan.Zero),
+        };
+        var csvFile = Path.Combine(imports, "duplicada.csv");
+        File.WriteAllBytes(csvFile, VaultCsv.Serialize([fresh, seeded[0] with { Password = "Outra-senha-ficticia-999" }]));
+
+        // Import sits after Export; Enter on it opens the page with the focus on the choose button. With no file chosen,
+        // that button and Back are the only stops.
+        OpenImportByKeyboard(app);
+        AssertEveryFocusableElementIsNamed(app);
+        foreach (var expected in new[] { "ImportBack", "ImportChoose" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Enter on the choose button opens the dialog (Windows', driven through UI Automation). A .pmvault asks for its
+        // password, with the focus on the box; Tab goes to Open, Back, the choose button and wraps to the box.
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.OpenInFileDialog(vaultFile);
+        app.WaitFor("ImportPassword");
+        app.WaitFocus("ImportPassword");
+        AssertEveryFocusableElementIsNamed(app);
+        foreach (var expected in new[] { "ImportOpen", "ImportBack", "ImportChoose", "ImportPassword" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Enter in the box opens the file, as the button does. Nothing is a duplicate, so the focus lands on Confirm, and
+        // Tab goes Back, the list and Confirm again.
+        var exportedTitle = SeededVault.ExportEntries[0].GetProperty("title").GetString()!;
+        app.SetValue("ImportPassword", SeededVault.ExportPassword);
+        app.WaitFor("ImportPassword").Focus();
+        app.WaitFocus("ImportPassword");
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitName("ImportSummary", AppResources.Format("ImportSummary", SeededVault.ExportEntries.Length, 0));
+        app.WaitFocus("ImportConfirm");
+        AssertEveryFocusableElementIsNamed(app);
+        foreach (var expected in new[] { "ImportBack", $"ImportPreviewList[{exportedTitle}]", "ImportConfirm" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        // Escape is Back: the list gets the focus back as it does from any page above it, on its first entry here.
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitFor("EntriesList");
+        app.WaitGone("ImportTitle");
+        app.WaitFocus(EntryItem(0));
+
+        // A preview with a duplicate starts on the choice of what to do with it, then the list, Confirm and Back.
+        OpenImportByKeyboard(app);
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.OpenInFileDialog(csvFile);
+        app.WaitName("ImportSummary", AppResources.Format("ImportSummary", 1, 1));
+        app.WaitFocus("ImportPolicy");
+        AssertEveryFocusableElementIsNamed(app);
+        foreach (var expected in new[] { $"ImportPreviewList[{fresh.Title}]", "ImportConfirm", "ImportBack", "ImportPolicy" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        foreach (var expected in new[] { "ImportBack", "ImportConfirm", $"ImportPreviewList[{fresh.Title}]", "ImportPolicy" })
+        {
+            app.PressChord(VirtualKeyShort.SHIFT, VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        app.PressKey(VirtualKeyShort.ESCAPE);
+        app.WaitFor("EntriesList");
+        app.WaitGone("ImportTitle");
+        app.WaitFocus(EntryItem(0));
+    }
+
+    [Fact]
     public void EmptyVault_FocusStartsOnNew()
     {
         using var app = AppSession.Launch(SeededVault.SeedEmpty);
@@ -469,6 +571,22 @@ public sealed class AccessibilityE2ETests
         app.WaitFocus("EntriesNew");
         app.WaitFor("EntriesEmpty");
         AssertEveryFocusableElementIsNamed(app);
+    }
+
+    // List to the import page by keyboard: Tab past New entry and Export to Import, Enter, and the page starts on its choose
+    // button.
+    private static void OpenImportByKeyboard(AppSession app)
+    {
+        foreach (var expected in new[] { "EntriesNew", "EntriesExport", "EntriesImport" })
+        {
+            app.PressKey(VirtualKeyShort.TAB);
+            app.WaitFocus(expected);
+        }
+
+        app.PressKey(VirtualKeyShort.RETURN);
+        app.WaitFor("ImportTitle");
+        app.WaitGone("EntriesList");
+        app.WaitFocus("ImportChoose");
     }
 
     private static string EntryItem(int index) =>

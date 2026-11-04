@@ -149,6 +149,8 @@ public sealed class EntryListSearchE2ETests(ITestOutputHelper output)
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesExport");
         app.PressKey(VirtualKeyShort.TAB);
+        app.WaitFocus("EntriesImport");
+        app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesLock");
         app.PressKey(VirtualKeyShort.TAB);
         app.WaitFocus("EntriesSearch");

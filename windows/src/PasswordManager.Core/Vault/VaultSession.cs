@@ -16,7 +16,8 @@ namespace PasswordManager.Core.Vault;
 /// <para>Callers should not share one session between threads, but every member takes the same private gate, so a
 /// <see cref="Lock"/> from another thread (for example, on a Windows session switch) waits for an in-flight write and
 /// never lets a body be sealed with a zeroed key. The gate also serializes writes, which <see cref="VaultFile"/>
-/// requires.</para>
+/// requires. <see cref="Import"/> is the one exception: it holds the gate only to check the state, because its Argon2id
+/// cost comes from the file being imported and a lock must not wait for a cost a file chose.</para>
 /// <para><see cref="Create"/>, <see cref="Unlock"/>, <see cref="ChangePassword"/>, <see cref="VerifyPassword"/>,
 /// <see cref="Export"/> and <see cref="Import"/> run Argon2id (about one second at the default parameters), so
 /// callers run them off the UI thread.</para>
@@ -324,7 +325,10 @@ public sealed class VaultSession : IDisposable
     /// Decrypts an export (or any vault file) with its password and returns its content for preview. The session and
     /// the disk are not changed: the caller merges the entries and calls <see cref="Save"/>.
     /// </summary>
-    /// <remarks>Costs one Argon2id run, so callers run it off the UI thread.</remarks>
+    /// <remarks>Costs one Argon2id run at the parameters in <paramref name="file"/>, so callers run it off the UI
+    /// thread. The gate covers only the state check: a <see cref="Lock"/> during the run returns at once, and this call
+    /// still returns the content, because it uses neither the session's key nor its state. The caller checks that the
+    /// vault is still open before using the result.</remarks>
     /// <param name="file">The whole file bytes. Not modified.</param>
     /// <param name="exportPassword">The password of the file's type-1 slot. Not modified; the caller zeroes it.</param>
     /// <returns>The decrypted content of <paramref name="file"/>.</returns>
@@ -338,18 +342,18 @@ public sealed class VaultSession : IDisposable
         lock (_gate)
         {
             RequireUnlockedFile();
+        }
 
-            var header = VaultHeader.Parse(file);
-            Span<byte> importKey = stackalloc byte[VaultFormat.KeySize];
-            try
-            {
-                KeySlot.UnwrapPasswordSlot(file, header.PasswordSlotOffset, exportPassword, importKey);
-                return VaultBody.Open(file, header.BodyOffset, importKey);
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(importKey);
-            }
+        var header = VaultHeader.Parse(file);
+        Span<byte> importKey = stackalloc byte[VaultFormat.KeySize];
+        try
+        {
+            KeySlot.UnwrapPasswordSlot(file, header.PasswordSlotOffset, exportPassword, importKey);
+            return VaultBody.Open(file, header.BodyOffset, importKey);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(importKey);
         }
     }
 

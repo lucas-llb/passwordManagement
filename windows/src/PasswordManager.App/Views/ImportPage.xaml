@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="PasswordManager.App.Views.ImportPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:PasswordManager.App.Views"
+    xmlns:vm="using:PasswordManager.ViewModels"
+    Loaded="OnLoaded"
+    Unloaded="OnUnloaded">
+
+    <!--
+        Import: choose a file, (for a .pmvault) type its password, preview, confirm. Nothing is written before the
+        confirmation. The preview list owns the * row and never sits inside a scrolling container, so it stays virtualized;
+        the row is Auto in the other steps, so the buttons sit right under their content.
+    -->
+    <Grid Padding="24">
+        <Grid MaxWidth="720" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition x:Name="ListRow" Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+                AutomationProperties.AutomationId="ImportTitle"
+                x:Uid="ImportTitle"
+                Style="{StaticResource TitleTextBlockStyle}" />
+
+            <StackPanel Grid.Row="1" Spacing="12">
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportIntro"
+                    x:Uid="ImportIntro"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.IsChooseFile(ViewModel.Stage), Mode=OneWay}" />
+                <Button
+                    x:Name="ChooseButton"
+                    AutomationProperties.AutomationId="ImportChoose"
+                    x:Uid="ImportChoose"
+                    Click="OnChooseClick"
+                    HorizontalAlignment="Left"
+                    IsEnabled="{x:Bind local:ImportPage.IsNot(ViewModel.IsBusy), Mode=OneWay}"
+                    Visibility="{x:Bind local:ImportPage.ShowChoose(ViewModel.Stage), Mode=OneWay}" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportFileName"
+                    Text="{x:Bind local:ImportPage.FileNameText(ViewModel.FileName), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.ShowFileName(ViewModel.Stage), Mode=OneWay}" />
+
+                <!--  The file password: Enter submits, and the box is emptied as soon as it was read.  -->
+                <PasswordBox
+                    x:Name="PasswordInput"
+                    AutomationProperties.AutomationId="ImportPassword"
+                    x:Uid="ImportPassword"
+                    KeyDown="OnPasswordKeyDown"
+                    Visibility="{x:Bind local:ImportPage.IsPassword(ViewModel.Stage), Mode=OneWay}" />
+                <Button
+                    AutomationProperties.AutomationId="ImportOpen"
+                    x:Uid="ImportOpen"
+                    Click="OnOpenClick"
+                    HorizontalAlignment="Left"
+                    IsEnabled="{x:Bind local:ImportPage.IsNot(ViewModel.IsBusy), Mode=OneWay}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Visibility="{x:Bind local:ImportPage.IsPassword(ViewModel.Stage), Mode=OneWay}" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportSummary"
+                    Text="{x:Bind local:ImportPage.SummaryText(ViewModel.NewCount, ViewModel.DuplicateCount), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.IsPreview(ViewModel.Stage), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportRejected"
+                    Text="{x:Bind local:ImportPage.RejectedText(ViewModel.RejectedLines), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.ShowRejected(ViewModel.Stage, ViewModel.RejectedLines), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportIgnoredColumns"
+                    Text="{x:Bind local:ImportPage.IgnoredColumnsText(ViewModel.IgnoredColumns), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.ShowIgnored(ViewModel.Stage, ViewModel.IgnoredColumns), Mode=OneWay}" />
+
+                <!--  Only when something is a duplicate; the items are filled from the resw in code.  -->
+                <ComboBox
+                    x:Name="PolicyCombo"
+                    MinWidth="200"
+                    AutomationProperties.AutomationId="ImportPolicy"
+                    x:Uid="ImportPolicy"
+                    SelectionChanged="OnPolicySelectionChanged"
+                    Visibility="{x:Bind local:ImportPage.ShowPolicy(ViewModel.Stage, ViewModel.DuplicateCount), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportPolicyHelp"
+                    x:Uid="ImportPolicyHelp"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.ShowPolicy(ViewModel.Stage, ViewModel.DuplicateCount), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportNothing"
+                    x:Uid="ImportNothing"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.ShowNothing(ViewModel.Stage, ViewModel.WriteCount), Mode=OneWay}" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportError"
+                    Text="{x:Bind local:ImportPage.ErrorText(ViewModel.Error, ViewModel.ErrorLine), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.HasError(ViewModel.Error), Mode=OneWay}" />
+
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportDone"
+                    Text="{x:Bind local:ImportPage.DoneText(ViewModel.AddedCount, ViewModel.ReplacedCount, ViewModel.SkippedCount), Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.IsDone(ViewModel.Stage), Mode=OneWay}" />
+                <TextBlock
+                    AutomationProperties.AutomationId="ImportDoneCsvReminder"
+                    x:Uid="ImportDoneCsvReminder"
+                    FontWeight="SemiBold"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind local:ImportPage.ShowCsvReminder(ViewModel.Stage, ViewModel.IsCsv), Mode=OneWay}" />
+            </StackPanel>
+
+            <ListView
+                x:Name="PreviewList"
+                Grid.Row="2"
+                AutomationProperties.AutomationId="ImportPreviewList"
+                x:Uid="ImportPreviewList"
+                ContainerContentChanging="OnRowContainerContentChanging"
+                ItemsSource="{x:Bind ViewModel.PreviewRows, Mode=OneWay}"
+                SelectionMode="None"
+                Visibility="{x:Bind local:ImportPage.IsPreview(ViewModel.Stage), Mode=OneWay}">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ImportPreviewRow">
+                        <StackPanel Margin="0,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock AutomationProperties.AutomationId="ImportRowTitle" Text="{x:Bind Title}" />
+                                <TextBlock
+                                    AutomationProperties.AutomationId="ImportRowDuplicate"
+                                    x:Uid="ImportRowDuplicate"
+                                    FontWeight="SemiBold"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Visibility="{x:Bind IsDuplicate}" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Username}" />
+                            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Url}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <StackPanel
+                Grid.Row="3"
+                Orientation="Horizontal"
+                Spacing="12">
+                <Button
+                    x:Name="ConfirmButton"
+                    AutomationProperties.AutomationId="ImportConfirm"
+                    x:Uid="ImportConfirm"
+                    Command="{x:Bind ViewModel.ConfirmCommand}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Visibility="{x:Bind local:ImportPage.IsPreview(ViewModel.Stage), Mode=OneWay}" />
+                <Button
+                    x:Name="BackButton"
+                    AutomationProperties.AutomationId="ImportBack"
+                    x:Uid="NavBack"
+                    Command="{x:Bind ViewModel.GoBackCommand}"
+                    KeyboardAcceleratorPlacementMode="Hidden">
+                    <Button.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="Escape" />
+                    </Button.KeyboardAccelerators>
+                </Button>
+                <ProgressRing
+                    Width="24"
+                    Height="24"
+                    AutomationProperties.AutomationId="ImportProgress"
+                    x:Uid="ImportProgress"
+                    IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>
