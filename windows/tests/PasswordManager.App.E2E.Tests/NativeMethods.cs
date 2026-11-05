@@ -9,7 +9,8 @@ namespace PasswordManager.App.E2E.Tests;
 // The few Win32 calls the E2E tests need and FlaUI does not offer: the foreground check that guards every keystroke,
 // the sequence that brings the app window to the front, the settings broadcast of the theme test, the display
 // affinity, window rect and window move of the capture protection test, and the session message, minimize, restore
-// and injected mouse move of the auto-lock test, and the clipboard reads of the clipboard test.
+// and injected mouse move of the auto-lock test, the clipboard reads of the clipboard test, and the icon reads of the
+// app icon test.
 internal static partial class NativeMethods
 {
     public const nint HWND_BROADCAST = 0xFFFF;
@@ -34,6 +35,10 @@ internal static partial class NativeMethods
     public const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;
     public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
     public const uint CF_UNICODETEXT = 13;
+    public const uint WM_GETICON = 0x007F;
+    public const nuint ICON_SMALL = 0;
+    public const nuint ICON_BIG = 1;
+    public const nuint ICON_SMALL2 = 2;
 
     [LibraryImport("user32.dll")]
     public static partial nint GetForegroundWindow();
@@ -59,6 +64,22 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll", EntryPoint = "SendMessageTimeoutW", StringMarshalling = StringMarshalling.Utf16)]
     public static partial nint SendMessageTimeoutW(
         nint hWnd, uint msg, nuint wParam, string lParam, uint flags, uint timeout, out nuint result);
+
+    // The same call for a message whose lParam is a number, such as WM_GETICON.
+    [LibraryImport("user32.dll", EntryPoint = "SendMessageTimeoutW", SetLastError = true)]
+    public static partial nint SendMessageTimeoutNumeric(
+        nint hWnd, uint msg, nuint wParam, nint lParam, uint flags, uint timeout, out nuint result);
+
+    // Documented as not for general use, so it stays in test code: it is the one call that picks an exact size out of the
+    // icon group of an exe. Each icon it returns belongs to the caller, who destroys it.
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial uint PrivateExtractIconsW(
+        string fileName, int iconIndex, int width, int height, out nint icon, out uint iconId, uint iconCount, uint flags);
+
+    // Only for icons from PrivateExtractIconsW: the handle from WM_GETICON belongs to the window.
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool DestroyIcon(nint icon);
 
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

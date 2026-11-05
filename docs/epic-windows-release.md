@@ -36,7 +36,7 @@ Publicar a primeira versão estável do app Windows: um gerenciador de senhas of
 | Testes: só serialização JSON | parcial |
 | Cripto (KDF, wrap/unwrap, AEAD), leitura/escrita do arquivo | não iniciado |
 | App WinUI: janela vazia com título vindo do `.resw` | esqueleto |
-| Empacotamento: `WindowsPackageType=None` (sem ícones) | pendente |
+| Empacotamento: `WindowsPackageType=None` (sem ícones na partida; os ícones vieram na W-27) | pendente |
 | `spec/test-vectors/`: só README | pendente |
 
 ## 4. Decisões que precisam sair antes de começar
@@ -115,7 +115,7 @@ Toda a lógica fica em `PasswordManager.Core`, testável sem UI.
 
 | ID | História | Critérios de aceite |
 |---|---|---|
-| W-27 | Ícones e identidade visual | Ícone do app e logos MSIX em todas as escalas exigidas. Arte gerada conforme as regras globais de imagem. |
+| W-27 | Ícones e identidade visual | Ícone do app e logos MSIX em todas as escalas exigidas. Arte gerada conforme as regras globais de imagem. Entregue: `Assets/` com os 77 PNGs e o `AppIcon.ico` (14 quadros, de 16 a 256 px), gerados por `windows/art/Build-AppAssets.ps1` a partir de dois mestres, em todas as famílias da lista da Microsoft; o ícone no `.exe` (`ApplicationIcon`) e na janela (`AppWindow.SetIcon`); testado por `Branding/AppAssetsTests` (191) e por `AppIconE2ETests` (20), que leem o `.exe` e a janela de fora do app. **Exceção à regra de imagem, autorizada pelo usuário:** os mestres foram gerados no ComfyUI local (Qwen-Image 2.1), não no Codex. O Codex atingiu o limite de uso várias vezes durante a W-27, e o usuário liberou o ComfyUI local para este projeto; não é cumprimento da regra do Codex (`gpt-6.1-sol`, `high`). Os prompts e os parâmetros estão em [architecture.md](architecture.md) §9.15. **Não entregue:** o MSIX e o manifesto com os logos (W-28; o app segue `WindowsPackageType=None`), o `BadgeLogo` (opcional, sem badges) e as escalas 250 e 300 (a lista completa não as cita). |
 | W-28 | Migração para MSIX | `WindowsPackageType` padrão (empacotado); manifesto **sem** `internetClient` nem outra capability de rede; cofre em `ApplicationData.Current.LocalFolder`. |
 | W-29 | Build de release | Self-contained x64 e ARM64; trimming conforme D5; ReadyToRun; medir tamanho do pacote e tempo de inicialização. |
 | W-30 | Assinatura e publicação | Conforme D2/D3; chave fora do repositório; processo de release documentado (versionamento, changelog, hash do pacote). |

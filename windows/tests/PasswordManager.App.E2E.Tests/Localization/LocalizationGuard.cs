@@ -25,6 +25,12 @@ internal static partial class LocalizationGuard
         "ExcludeClipboardContentFromMonitorProcessing",
     };
 
+    // The paths of the files the app loads from its own folder (W-27). A path is not UI text; matched exactly.
+    private static readonly HashSet<string> AssetPaths = new(StringComparer.Ordinal)
+    {
+        "Assets/AppIcon.ico",
+    };
+
     // Properties that put text on screen or in front of a screen reader. In XAML their value must be a binding or come from an x:Uid, never a literal.
     private static readonly HashSet<string> TextAttributes = new(StringComparer.Ordinal)
     {
@@ -197,7 +203,8 @@ internal static partial class LocalizationGuard
         || IsInExceptionConstructor(source, literal.Start)
         || IsInNativeImportAttribute(source, literal.Start)
         || DebugSwitches.Contains(source[literal.ContentStart..literal.ContentEnd])
-        || ClipboardFormatNames.Contains(source[literal.ContentStart..literal.ContentEnd]);
+        || ClipboardFormatNames.Contains(source[literal.ContentStart..literal.ContentEnd])
+        || AssetPaths.Contains(source[literal.ContentStart..literal.ContentEnd]);
 
     // The code right before the literal, ignoring whitespace, is "GetString(".
     private static bool FollowsGetString(string source, int literalStart)

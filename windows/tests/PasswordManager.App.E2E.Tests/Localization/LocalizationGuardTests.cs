@@ -108,6 +108,7 @@ public sealed class LocalizationGuardTests
             var minimize = arguments.Contains("--lock-on-minimize");
             var clipboard = Array.IndexOf(arguments, "--clipboard-clear-seconds");
             private const string Monitor = "ExcludeClipboardContentFromMonitorProcessing";
+            private const string AppIconPath = "Assets/AppIcon.ico";
             [LibraryImport("user32.dll", SetLastError = true)]
             [DllImport("user32.dll", EntryPoint = "SetWindowDisplayAffinity")]
             // "comment"
@@ -135,6 +136,15 @@ public sealed class LocalizationGuardTests
     [InlineData("""private const string Monitor = "excludeclipboardcontentfrommonitorprocessing";""")]
     [InlineData("""private const string Monitor = "ExcludeClipboardContentFromMonitorProcessing ";""")]
     public void FindCodeLiterals_NearMissOfAClipboardFormatName_IsReported(string source)
+    {
+        Assert.Single(LocalizationGuard.FindCodeLiterals(source));
+    }
+
+    [Theory]
+    [InlineData("""private const string AppIconPath = "Assets/AppIcon.png";""")]
+    [InlineData("""private const string AppIconPath = "assets/appicon.ico";""")]
+    [InlineData("""private const string AppIconPath = "Assets/AppIcon.ico ";""")]
+    public void FindCodeLiterals_NearMissOfAnAssetPath_IsReported(string source)
     {
         Assert.Single(LocalizationGuard.FindCodeLiterals(source));
     }
