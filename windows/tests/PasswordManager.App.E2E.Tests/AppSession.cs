@@ -52,9 +52,7 @@ internal sealed class AppSession : IDisposable
     // The extra arguments go after --vaults-dir, for the other Debug switches (such as --idle-timeout-seconds).
     public static AppSession Launch(Action<string>? seed = null, params string[] arguments)
     {
-        Assert.SkipUnless(IsDebugBuild, "E2E tests run only in Debug: the --vaults-dir hook exists only in the Debug app.");
-        var exe = Metadata("AppExePath");
-        Assert.True(File.Exists(exe), $"Build the Debug app first: {exe}");
+        var exe = RequireDebugAppExe();
 
         var directory = Directory.CreateTempSubdirectory("pm-e2e-").FullName;
         Application? app = null;
@@ -81,6 +79,16 @@ internal sealed class AppSession : IDisposable
             Cleanup(app, automation, directory);
             throw;
         }
+    }
+
+    // The path of the Debug apphost, for a launch or a static check of the exe: in Release the test is skipped, and a
+    // missing exe fails with its path.
+    public static string RequireDebugAppExe()
+    {
+        Assert.SkipUnless(IsDebugBuild, "E2E tests run only in Debug: the --vaults-dir hook exists only in the Debug app.");
+        var exe = Metadata("AppExePath");
+        Assert.True(File.Exists(exe), $"Build the Debug app first: {exe}");
+        return exe;
     }
 
     public static string Metadata(string key) =>

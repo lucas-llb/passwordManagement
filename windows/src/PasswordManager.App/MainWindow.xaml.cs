@@ -23,6 +23,9 @@ public sealed partial class MainWindow : Window
     // The marker WindowsClipboard puts on every guarded copy; nothing else in the app sets it.
     private const string GuardedCopyFormat = "ExcludeClipboardContentFromMonitorProcessing";
 
+    // Relative to the app folder, which is also the install folder once packaged.
+    private const string AppIconPath = "Assets/AppIcon.ico";
+
     // The window procedure is a static native callback, so it reaches the one window through these. The previous
     // procedure is kept after close, so a message already in flight still chains to it.
     private static MainWindow? s_instance;
@@ -51,6 +54,7 @@ public sealed partial class MainWindow : Window
 
         InitializeComponent();
         Title = new ResourceLoader().GetString("AppTitle");
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, AppIconPath));
 
         // The title bar follows the system app mode too, live, like the XAML content.
         AppWindow.TitleBar.PreferredTheme = TitleBarTheme.UseDefaultAppMode;
