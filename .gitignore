@@ -59,6 +59,9 @@ captures/
 *.keystore
 *.pfx
 *.p12
+*.cer
+*.snk
+*.key
 *.pmvault
 *.bak
 *.pmvault.tmp

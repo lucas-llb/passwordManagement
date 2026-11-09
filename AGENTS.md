@@ -153,7 +153,7 @@ senha mestra ──Argon2id(salt)──► KEK (256 bits)
 
 - .NET 10, WinUI 3 com a versão estável mais recente do Windows App SDK, MVVM com `CommunityToolkit.Mvvm`.
 - `<Nullable>enable</Nullable>`, `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`, analisadores .NET ligados (`<AnalysisLevel>latest-recommended</AnalysisLevel>`).
-- Empacotar como **MSIX** sem a capability `internetClient` nem outra de rede; publicar self-contained com trimming quando compatível. O app é empacotado por padrão: `Package.appxmanifest` liga os alvos de MSIX, e o pacote sai sem assinatura até a W-30.
+- Empacotar como **MSIX** sem a capability `internetClient` nem outra de rede; publicar self-contained com trimming quando compatível. O app é empacotado por padrão: `Package.appxmanifest` liga os alvos de MSIX. A assinatura fica em `windows/tools/New-Release.ps1`, que assina com um certificado **fora do repositório** (`.pfx`/`.p12`/`.cer`/`.snk`/`.key` no `.gitignore`, nunca commitados), lê a senha de `PM_CERT_PASSWORD` (nunca de um literal no script) e se recusa a assinar sem `-CertificatePath` ou sem o `-Unsigned` explícito. O `Publisher` do manifesto tem de ser igual ao `Subject` do certificado, verbo a verbo.
 - Cofre em `<ApplicationData.Current.LocalFolder>\vaults\` no app empacotado; num exe solto, que não tem identidade de pacote, `%LOCALAPPDATA%\PasswordManagement\vaults\`. Não há migração entre as duas pastas.
 - Nenhum pacote NuGet de rede/telemetria (HttpClient, Application Insights, Sentry etc.).
 - Exportar/importar via `FileSavePicker`/`FileOpenPicker`.
