@@ -35,9 +35,13 @@ internal sealed class AppSession : IDisposable
     private readonly Application? _app;
     private readonly UIA3Automation? _automation;
 
-    private AppSession(string vaultsDirectory, Application app, UIA3Automation automation, Window window)
+    // The temp root owned by this session; VaultsDirectory is inside it (the same folder for a --vaults-dir launch).
+    private readonly string _cleanupDirectory;
+
+    private AppSession(string vaultsDirectory, string cleanupDirectory, Application app, UIA3Automation automation, Window window)
     {
         VaultsDirectory = vaultsDirectory;
+        _cleanupDirectory = cleanupDirectory;
         _app = app;
         _automation = automation;
         Window = window;
@@ -53,16 +57,42 @@ internal sealed class AppSession : IDisposable
     public static AppSession Launch(Action<string>? seed = null, params string[] arguments)
     {
         var exe = RequireDebugAppExe();
+        var directory = CreateTempDirectory();
+        return Start(exe, directory, directory, seed, ["--vaults-dir", directory], arguments);
+    }
 
-        var directory = Directory.CreateTempSubdirectory("pm-e2e-").FullName;
+    // W-28: a loose exe has no package identity, so --packaged-local-folder stands in for ApplicationData.Current.LocalFolder.
+    // The app appends "vaults" to it, so the seed writes to <temp>\vaults and VaultsDirectory is that folder; the temp root
+    // is removed whole on dispose. There is no --vaults-dir, so the packaged branch really resolves the folder.
+    public static AppSession LaunchPackaged(Action<string>? seed = null, params string[] arguments)
+    {
+        var exe = RequireDebugAppExe();
+        var directory = CreateTempDirectory();
+        var vaultsDirectory = Path.Combine(directory, "vaults");
+
+        // A packaged LocalFolder already exists before the app runs; the vaults folder inside it may not, so the seed
+        // (which writes profiles.json) gets it created, and the app still has to resolve it from the local folder.
+        Directory.CreateDirectory(vaultsDirectory);
+        return Start(exe, directory, vaultsDirectory, seed, ["--packaged-local-folder", directory], arguments);
+    }
+
+    private static string CreateTempDirectory() => Directory.CreateTempSubdirectory("pm-e2e-").FullName;
+
+    // One launch path for both folder hooks: the hook and its value go first, then the extra Debug switches, in order.
+    private static AppSession Start(
+        string exe, string directory, string vaultsDirectory, Action<string>? seed, string[] switches, string[] arguments)
+    {
         Application? app = null;
         UIA3Automation? automation = null;
         try
         {
-            seed?.Invoke(directory);
+            seed?.Invoke(vaultsDirectory);
             var start = new ProcessStartInfo(exe);
-            start.ArgumentList.Add("--vaults-dir");
-            start.ArgumentList.Add(directory);
+            foreach (var argument in switches)
+            {
+                start.ArgumentList.Add(argument);
+            }
+
             foreach (var argument in arguments)
             {
                 start.ArgumentList.Add(argument);
@@ -72,7 +102,7 @@ internal sealed class AppSession : IDisposable
             automation = new UIA3Automation();
             var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(30))
                 ?? throw new InvalidOperationException("The app window did not open.");
-            return new AppSession(directory, app, automation, window);
+            return new AppSession(vaultsDirectory, directory, app, automation, window);
         }
         catch
         {
@@ -613,7 +643,7 @@ internal sealed class AppSession : IDisposable
     public void Dispose()
     {
         CancelOpenFileDialog();
-        Cleanup(_app, _automation, VaultsDirectory);
+        Cleanup(_app, _automation, _cleanupDirectory);
     }
 
     private static void Cleanup(Application? app, UIA3Automation? automation, string directory)

@@ -153,8 +153,8 @@ senha mestra ──Argon2id(salt)──► KEK (256 bits)
 
 - .NET 10, WinUI 3 com a versão estável mais recente do Windows App SDK, MVVM com `CommunityToolkit.Mvvm`.
 - `<Nullable>enable</Nullable>`, `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`, analisadores .NET ligados (`<AnalysisLevel>latest-recommended</AnalysisLevel>`).
-- Empacotar como **MSIX** sem a capability `internetClient`; publicar self-contained com trimming quando compatível. Por enquanto o app roda sem pacote (`WindowsPackageType=None`) porque ainda não há ícones; migrar para MSIX antes da primeira release.
-- Cofre em `%LOCALAPPDATA%\<App>\vaults\` (ou `ApplicationData.Current.LocalFolder` quando empacotado).
+- Empacotar como **MSIX** sem a capability `internetClient` nem outra de rede; publicar self-contained com trimming quando compatível. O app é empacotado por padrão: `Package.appxmanifest` liga os alvos de MSIX, e o pacote sai sem assinatura até a W-30.
+- Cofre em `<ApplicationData.Current.LocalFolder>\vaults\` no app empacotado; num exe solto, que não tem identidade de pacote, `%LOCALAPPDATA%\PasswordManagement\vaults\`. Não há migração entre as duas pastas.
 - Nenhum pacote NuGet de rede/telemetria (HttpClient, Application Insights, Sentry etc.).
 - Exportar/importar via `FileSavePicker`/`FileOpenPicker`.
 - Esconder a janela de capturas quando o cofre estiver aberto: `SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)`.

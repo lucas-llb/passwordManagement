@@ -36,6 +36,14 @@ obj/
 *.user
 TestResults/
 
+# Windows package output (MSIX/APPX) — never commit generated packages
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixupload
+*.appx
+*.appxsym
+
 # Android / Gradle / IDE
 .gradle/
 build/
