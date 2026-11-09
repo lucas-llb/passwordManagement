@@ -15,7 +15,7 @@ internal static partial class LocalizationGuard
     // The Debug-only command-line switches the E2E tests pass to the app. A switch name is not UI text; matched exactly.
     private static readonly HashSet<string> DebugSwitches = new(StringComparer.Ordinal)
     {
-        "--vaults-dir", "--idle-timeout-seconds", "--lock-on-minimize", "--clipboard-clear-seconds",
+        "--vaults-dir", "--packaged-local-folder", "--idle-timeout-seconds", "--lock-on-minimize", "--clipboard-clear-seconds",
     };
 
     // The names of the clipboard formats the app writes (W-22). A format name is a protocol identifier, not UI text;

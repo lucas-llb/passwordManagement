@@ -1,10 +1,12 @@
 #if DEBUG
 using System.Globalization;
 #endif
+using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using PasswordManager.Core.Profiles;
 using PasswordManager.ViewModels;
 using PasswordManager.ViewModels.Navigation;
+using Windows.Storage;
 
 namespace PasswordManager.App;
 
@@ -56,7 +58,40 @@ public partial class App : Application
             return arguments[index + 1];
         }
 #endif
-        return ProfileRepository.GetDefaultDirectory();
+        return ProfileRepository.GetDefaultDirectory(GetPackagedLocalFolder());
+    }
+
+    // The packaged app keeps its vaults under ApplicationData.Current.LocalFolder; a loose exe (all E2E launches) has no
+    // package identity and the call throws, so null keeps the unpackaged default. The path is never logged.
+    // Debug builds only: --packaged-local-folder <absolute folder> stands in for LocalFolder so the E2E tests exercise
+    // the packaged branch without installing the package. It is validated exactly like --vaults-dir.
+    private static string? GetPackagedLocalFolder()
+    {
+#if DEBUG
+        var arguments = Environment.GetCommandLineArgs();
+        var index = Array.IndexOf(arguments, "--packaged-local-folder");
+        if (index >= 0)
+        {
+            if (index + 1 >= arguments.Length || !Path.IsPathFullyQualified(arguments[index + 1]))
+            {
+                throw new InvalidOperationException("--packaged-local-folder needs an absolute folder path.");
+            }
+
+            return arguments[index + 1];
+        }
+#endif
+        try
+        {
+            return ApplicationData.Current.LocalFolder.Path;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+        catch (COMException)
+        {
+            return null;
+        }
     }
 
     // Debug builds only: the E2E tests pass --idle-timeout-seconds <n> (n > 0) and --lock-on-minimize so they do not
