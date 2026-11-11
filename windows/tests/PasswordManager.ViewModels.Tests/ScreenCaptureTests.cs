@@ -15,7 +15,7 @@ public sealed class ScreenCaptureTests : IDisposable
     public void Dispose() => _profiles.Dispose();
 
     [Fact]
-    public void AllowsScreenCapture_ProfilesAndUnlock_AreTrue()
+    public void AllowsScreenCapture_ProfilesIsTrueAndUnlockIsFalse()
     {
         var profile = _profiles.CreateProfile("Alice", TestProfiles.Password);
 
@@ -23,7 +23,7 @@ public sealed class ScreenCaptureTests : IDisposable
         var unlock = new UnlockViewModel(profile, _profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings);
 
         Assert.True(profiles.AllowsScreenCapture);
-        Assert.True(unlock.AllowsScreenCapture);
+        Assert.False(unlock.AllowsScreenCapture);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public sealed class ScreenCaptureTests : IDisposable
     }
 
     [Fact]
-    public async Task Flow_CaptureIsAllowedOnlyWhileNoVaultIsOpen()
+    public async Task Flow_CaptureIsAllowedOnlyOnTheProfilesPage()
     {
         var alice = _profiles.CreateProfile(
             "Alice",
@@ -139,7 +139,7 @@ public sealed class ScreenCaptureTests : IDisposable
         _navigation.ResetTo(new ProfilesViewModel(_profiles.Repository, _navigation, _profiles.Throttle, _profiles.Clipboard, _profiles.Settings));
         var profilesPage = Assert.IsType<ProfilesViewModel>(_navigation.Current);
 
-        // Profiles -> Unlock.
+        // Profiles -> Unlock: the master password and its reveal button make it non-capturable.
         profilesPage.OpenProfileCommand.Execute(alice);
         var unlock = Assert.IsType<UnlockViewModel>(_navigation.Current);
 
@@ -173,6 +173,6 @@ public sealed class ScreenCaptureTests : IDisposable
         kit.DoneCommand.Execute(null);
         Assert.IsType<ProfilesViewModel>(_navigation.Current);
 
-        Assert.Equal([true, true, false, false, false, true, true, true, false, false, true], captured);
+        Assert.Equal([true, false, false, false, false, true, false, true, false, false, true], captured);
     }
 }

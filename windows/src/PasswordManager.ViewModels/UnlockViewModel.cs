@@ -7,6 +7,10 @@ using PasswordManager.ViewModels.Navigation;
 namespace PasswordManager.ViewModels;
 
 /// <summary>Unlock screen of one profile. A successful unlock replaces the whole stack with the entry list.</summary>
+/// <remarks>
+/// It does not override <see cref="PageViewModel.AllowsScreenCapture"/>: the page takes the master password with a
+/// reveal button, so it can never be captured (W-32).
+/// </remarks>
 public sealed partial class UnlockViewModel : PageViewModel
 {
     private readonly ProfileRepository _repository;
@@ -55,9 +59,6 @@ public sealed partial class UnlockViewModel : PageViewModel
 
     /// <summary>The profile being unlocked.</summary>
     public Profile Profile { get; }
-
-    /// <inheritdoc />
-    public override bool AllowsScreenCapture => true;
 
     /// <summary>The failure of the last attempt; the view maps it to a text.</summary>
     [ObservableProperty]

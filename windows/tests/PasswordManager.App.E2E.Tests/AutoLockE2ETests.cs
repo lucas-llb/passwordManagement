@@ -33,12 +33,15 @@ public sealed class AutoLockE2ETests
         Assert.Null(app.Find("EntriesList"));
         Assert.Null(app.Find("DetailTitle"));
         app.AssertNoEntryVisible();
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so it is excluded from capture like the vault pages.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
 
         // The stack is [Profiles, Unlock]: nothing from the vault is left behind Back.
         app.Invoke("UnlockBack");
         app.WaitFor("ProfilesList");
         app.WaitGone("UnlockPassword");
+        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
 
         Unlock(app);
     }
@@ -148,7 +151,9 @@ public sealed class AutoLockE2ETests
         app.WaitFor("UnlockPassword");
         app.WaitGone("EntriesList");
         app.AssertNoEntryVisible();
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so the lock leaves the window excluded from capture.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
     }
 
     // Opens the seeded vault from the profile list (or the Unlock page it leads to) and waits for the entry list.

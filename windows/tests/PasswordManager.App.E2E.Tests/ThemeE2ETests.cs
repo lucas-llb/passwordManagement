@@ -8,7 +8,7 @@ namespace PasswordManager.App.E2E.Tests;
 
 // The app follows the system app mode live, title bar included, and its text keeps AA contrast (4.5:1) in both
 // themes. The test switches the user's real AppsUseLightTheme for a few seconds and always restores it (SystemTheme).
-// It stays on Profiles and Unlock: no vault is open, so nothing secret is on screen when the pixels are captured.
+// It stays on Profiles, the only capturable page (W-32): no secret is on screen when the pixels are captured.
 public sealed class ThemeE2ETests
 {
     private const double MaxDarkBackground = 0.1;
@@ -30,10 +30,6 @@ public sealed class ThemeE2ETests
 
         using (SystemTheme.Override(!dark))
         {
-            AssertRenderedTheme(app, !dark);
-
-            Assert.Single(app.Items("ProfilesList")).Patterns.Invoke.Pattern.Invoke();
-            app.WaitFor("UnlockPassword");
             AssertRenderedTheme(app, !dark);
         }
 

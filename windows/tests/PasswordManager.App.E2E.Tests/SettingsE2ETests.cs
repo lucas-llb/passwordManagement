@@ -127,7 +127,9 @@ public sealed class SettingsE2ETests
         app.WaitGone("SettingsTitle");
         Assert.Null(app.Find("EntriesList"));
         app.AssertNoEntryVisible();
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so the lock leaves the window excluded from capture.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
     }
 
     [Fact]
@@ -143,7 +145,9 @@ public sealed class SettingsE2ETests
         app.WaitFor("UnlockPassword");
         app.WaitGone("EntriesList");
         app.AssertNoEntryVisible();
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so the lock leaves the window excluded from capture.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
     }
 
     // Takes about a minute of real time, and needs the cursor off the window like the other idle tests.
@@ -167,7 +171,9 @@ public sealed class SettingsE2ETests
             $"The vault locked after only {chosen.Elapsed}; the timeout that was chosen is one minute.");
         app.WaitGone("SettingsTitle");
         app.AssertNoEntryVisible();
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so the lock leaves the window excluded from capture.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
     }
 
     [Fact]
@@ -442,7 +448,9 @@ public sealed class SettingsE2ETests
         app.PostSessionChange(NativeMethods.WTS_SESSION_LOCK);
         app.WaitFor("UnlockTitle");
         app.WaitGone("NewKitTitle");
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so the lock leaves the window excluded from capture.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
         Assert.Null(app.Find("NewKitText"));
         AssertNotOnScreen(app, kit);
 
@@ -455,6 +463,7 @@ public sealed class SettingsE2ETests
         app.Invoke("UnlockBack");
         app.WaitFor("ProfilesList");
         app.WaitGone("UnlockPassword");
+        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
         Assert.Null(app.Find("NewKitTitle"));
         Assert.Null(app.Find("SettingsTitle"));
     }
@@ -473,13 +482,16 @@ public sealed class SettingsE2ETests
         app.PostSessionChange(NativeMethods.WTS_SESSION_LOCK);
         app.WaitFor("UnlockTitle");
         app.WaitGone("SettingsTitle");
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so the lock leaves the window excluded from capture.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
         app.AssertNoEntryVisible();
 
         // The lock reset the stack to Profiles and Unlock: Back leads to the profile list, with nothing of the settings left.
         app.Invoke("UnlockBack");
         app.WaitFor("ProfilesList");
         app.WaitGone("UnlockPassword");
+        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
         Assert.Null(app.Find("SettingsTitle"));
         Assert.Null(app.Find("SettingsCurrentPassword"));
         Assert.Null(app.Find("EntriesList"));

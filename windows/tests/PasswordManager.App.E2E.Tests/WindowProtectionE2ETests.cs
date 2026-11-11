@@ -6,9 +6,10 @@ using PasswordManager.App.E2E.Tests.Accessibility;
 
 namespace PasswordManager.App.E2E.Tests;
 
-// While the vault is open (list and detail) the window is excluded from screen capture (W-14), so a capture of its area
-// shows what is behind it. The tests read the real display affinity from outside the app and compare a capture of the
-// window area with one taken after moving the window off-screen. They send no key and no click.
+// From the unlock page on (unlock, list and detail) the window is excluded from screen capture (W-14/W-32), so a capture
+// of its area shows what is behind it; the profiles page is the only capturable page, which is the control. The tests
+// read the real display affinity from outside the app and compare a capture of the window area with one taken after
+// moving the window off-screen. They send no key and no click.
 public sealed class WindowProtectionE2ETests
 {
     // A capturable window changes far more of its own area than this when it leaves; the 1% ceiling of an excluded window
@@ -29,20 +30,23 @@ public sealed class WindowProtectionE2ETests
     private static readonly TimeSpan SettleInterval = TimeSpan.FromMilliseconds(250);
 
     [Fact]
-    public void VaultOpen_WindowIsExcludedFromCaptureOnlyWhileUnlocked()
+    public void Window_IsCapturableOnlyOnTheProfilesPage()
     {
         using var app = AppSession.Launch(SeededVault.Seed);
         Assert.Single(app.Items("ProfilesList"));
         app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
 
+        // The unlock page takes the master password with a reveal button: it is excluded like the vault pages.
         Assert.Single(app.Items("ProfilesList")).Patterns.Invoke.Pattern.Invoke();
         app.WaitFor("UnlockPassword");
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
 
         app.TypePassword("senha-errada-ficticia");
         app.Invoke("UnlockButton");
         app.WaitFor("UnlockWrongPassword");
-        Assert.Equal(NativeMethods.WDA_NONE, app.DisplayAffinity());
+
+        // A wrong password keeps the same page, so nothing may have unprotected the window.
+        Assert.Equal(NativeMethods.WDA_EXCLUDEFROMCAPTURE, app.DisplayAffinity());
 
         // The wrong password starts a one-second delay before the next attempt.
         app.WaitEnabled("UnlockButton");
@@ -61,11 +65,13 @@ public sealed class WindowProtectionE2ETests
         app.WaitFor("EntriesList");
         Assert.Equal(NativeMethods.WDA_EXCLUDEFROMCAPTURE, app.DisplayAffinity());
 
+        // Lock ends on the unlock page of the same profile: excluded while it is on top.
         app.Invoke("EntriesLock");
         app.WaitFor("UnlockPassword");
         app.WaitGone("EntriesList");
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
 
+        // Back on the profiles page, the only capturable one.
         app.Invoke("UnlockBack");
         app.WaitFor("ProfilesList");
         app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
@@ -75,13 +81,16 @@ public sealed class WindowProtectionE2ETests
     public void VaultOpen_ScreenCaptureSeesOnlyWhatIsBehindTheWindow()
     {
         using var app = AppSession.Launch(SeededVault.Seed);
+
+        // The control: the profiles page is capturable, so the capture sees it and the checks below have power.
+        Assert.Single(app.Items("ProfilesList"));
+        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+        var profiles = FractionOfWindowThatCaptureSees(app);
+        Assert.True(profiles >= MinVisibleFraction, Message("Profiles (capturable)", profiles, ">=", MinVisibleFraction));
+
         Assert.Single(app.Items("ProfilesList")).Patterns.Invoke.Pattern.Invoke();
         app.WaitFor("UnlockPassword");
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
-
-        // The control: a capturable window is seen by the capture, so the check below has power.
-        var unlocked = FractionOfWindowThatCaptureSees(app);
-        Assert.True(unlocked >= MinVisibleFraction, Message("Unlock (capturable)", unlocked, ">=", MinVisibleFraction));
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
 
         app.TypePassword(SeededVault.Password);
         app.Invoke("UnlockButton");
@@ -91,12 +100,18 @@ public sealed class WindowProtectionE2ETests
         var list = FractionOfWindowThatCaptureSees(app);
         Assert.True(list <= MaxExcludedFraction, Message("entry list (excluded)", list, "<=", MaxExcludedFraction));
 
+        // Lock leaves the unlock page on top of the profiles page; only after Back is the window capturable again.
         app.Invoke("EntriesLock");
         app.WaitFor("UnlockPassword");
+        app.WaitGone("EntriesList");
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
+
+        app.Invoke("UnlockBack");
+        app.WaitFor("ProfilesList");
         app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
 
         var locked = FractionOfWindowThatCaptureSees(app);
-        Assert.True(locked >= MinVisibleFraction, Message("Unlock after lock (capturable)", locked, ">=", MinVisibleFraction));
+        Assert.True(locked >= MinVisibleFraction, Message("Profiles after lock (capturable)", locked, ">=", MinVisibleFraction));
     }
 
     // How much of the window area changes in a screen capture when the window leaves the screen: a capturable window

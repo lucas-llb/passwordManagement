@@ -536,7 +536,9 @@ public sealed class ImportE2ETests(ITestOutputHelper output)
         app.PostSessionChange(NativeMethods.WTS_SESSION_LOCK);
         app.WaitFor("UnlockTitle");
         app.WaitGone("ImportTitle");
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so the lock leaves the window excluded from capture.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
         AssertNotOnScreen(app, [.. added.Select(entry => entry.Title), .. added.Select(entry => entry.Password)]);
         AssertSnapshot(vaults, app.VaultsDirectory);
 
