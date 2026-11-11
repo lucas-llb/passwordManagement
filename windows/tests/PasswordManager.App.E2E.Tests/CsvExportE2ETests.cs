@@ -165,12 +165,15 @@ public sealed class CsvExportE2ETests
         app.PostSessionChange(NativeMethods.WTS_SESSION_LOCK);
         app.WaitFor("UnlockTitle");
         app.WaitGone("CsvExportTitle");
-        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
+
+        // The unlock page takes the master password, so the lock leaves the window excluded from capture.
+        app.WaitDisplayAffinity(NativeMethods.WDA_EXCLUDEFROMCAPTURE);
 
         // The lock reset the stack to Profiles and Unlock: Back leads to the profile list, not to the CSV page.
         app.Invoke("UnlockBack");
         app.WaitFor("ProfilesList");
         app.WaitGone("UnlockPassword");
+        app.WaitDisplayAffinity(NativeMethods.WDA_NONE);
         Assert.Null(app.Find("CsvExportTitle"));
         Assert.Null(app.Find("ExportTitle"));
     }
